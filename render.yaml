@@ -2,9 +2,12 @@
 services:
   - type: web
     name: carmatch-api
-    runtime: docker
+    runtime: python
     rootDir: backend
-    dockerfilePath: ./Dockerfile
+    # Python version comes from backend/.python-version. The build also downloads the EPA dataset into
+    # backend/data so the first request after a deploy doesn't wait for it.
+    buildCommand: pip install -r requirements.txt && python -m app.vehicles
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     plan: free
     region: oregon
     healthCheckPath: /health

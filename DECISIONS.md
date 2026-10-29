@@ -4,7 +4,7 @@ These are choices the brief didn't settle, made while building the app autonomou
 
 ## Data and candidates
 
-1. **fueleconomy.gov bulk dataset instead of per-request REST calls.** The `/ws/rest/vehicle/*` services return the same data as `vehicles.csv.zip` (about 2 MB). Building about 40 candidates per search through REST would take hundreds of calls (year → make → model → options → vehicle). The backend loads the dataset into memory instead: it is baked into the Docker image at build time and re-downloaded at boot if older than 30 days. Searches don't wait on any EPA network call.
+1. **fueleconomy.gov bulk dataset instead of per-request REST calls.** The `/ws/rest/vehicle/*` services return the same data as `vehicles.csv.zip` (about 2 MB). Building about 40 candidates per search through REST would take hundreds of calls (year → make → model → options → vehicle). The backend loads the dataset into memory instead: the Render build step downloads it, and the app re-downloads it at boot if it is missing or older than 30 days. Searches don't wait on any EPA network call.
 2. **Brand list = vPIC makes (car, MPV, truck) that have EPA data, plus EPA makes with 40 or more records** (e.g. Scion, McLaren, which vPIC files elsewhere). This drops vPIC's trailer and motorcycle makers. EPA spelling variants ("Mini"/"MINI") are merged.
 3. **Body types:**
    - Trucks, SUVs, minivans and wagons come from the EPA vehicle class.
@@ -45,7 +45,11 @@ These are choices the brief didn't settle, made while building the app autonomou
 
 22. **Favorites trigger:** BEFORE INSERT takes a per-user advisory lock (so concurrent inserts can't exceed 10) and deletes everything older than the 9 newest. When the car_key already exists, it evicts nothing, so `ON CONFLICT DO NOTHING` can't silently drop a favorite. `user_id` defaults to `auth.uid()`.
 23. **`car_data` is capped at 16 KB** and `car_key` at 200 characters, so the jsonb column can't be abused.
-24. **SQL tests run on PGlite** (in-process Postgres 17 under Node) with a minimal stub of Supabase's `auth` schema and roles. They need no Docker or Supabase CLI.
+24. **SQL tests run on PGlite** (in-process Postgres 17 under Node) with a minimal stub of Supabase's `auth` schema and roles. They need no local Postgres or Supabase CLI.
+
+## Hosting
+
+33. **No Docker.** Render runs the backend on its native Python runtime (`render.yaml`: pip install, then uvicorn). The stack is just GitHub, Vercel, Render and Supabase.
 
 ## Frontend
 

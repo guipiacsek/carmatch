@@ -211,7 +211,7 @@ catalog = Catalog()
 
 async def _dataset_bytes(client: httpx.AsyncClient) -> bytes:
     path = os.path.join(settings.data_dir, "vehicles.csv.zip")
-    # Baked into the Docker image at build time; refresh if older than 30 days.
+    # Downloaded by the Render build step (python -m app.vehicles); refresh if older than 30 days.
     if os.path.exists(path) and time.time() - os.path.getmtime(path) < 30 * 86400:
         with open(path, "rb") as f:
             return f.read()
@@ -247,5 +247,5 @@ async def load_catalog() -> None:
     log.info("catalog loaded: %d vehicles, %d makes", len(vehicles), len(catalog.makes))
 
 
-if __name__ == "__main__":  # used by the Dockerfile to bake the dataset into the image
+if __name__ == "__main__":  # used by the Render build command to fetch the dataset ahead of time
     asyncio.run(load_catalog())

@@ -9,7 +9,7 @@ Answer ten quick questions and get **7 ranked car recommendations** for the US m
 
 ```
 frontend/   React + Vite + TypeScript, Tailwind v4, shadcn/ui        → Vercel
-backend/    FastAPI, Pydantic v2, httpx (async), Dockerfile           → Render
+backend/    FastAPI, Pydantic v2, httpx (async)                       → Render (native Python)
 supabase/   SQL migrations + PGlite tests                            → Supabase (Postgres + Auth)
 ```
 
@@ -86,9 +86,9 @@ delete from favorites where car_key like 'test-%';
 
 ### Backend on Render
 
-1. In Render, open **New → Blueprint**, pick this repo, and it reads `render.yaml`: a Docker web service, root `backend/`, health check `/health`.
+1. In Render, open **New → Blueprint**, pick this repo, and it reads `render.yaml`: a native Python web service (no Docker), root `backend/`, health check `/health`.
 2. Fill in the env vars it asks for: `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` (optional), and `ALLOWED_ORIGINS` (your Vercel URL, e.g. `https://carmatch.vercel.app`). Optionally set `ALLOWED_ORIGIN_REGEX` for preview deploys.
-3. The image bakes in the EPA dataset at build time, so cold starts don't download it. Note that the free plan sleeps when idle.
+3. The build step downloads the EPA dataset, so the first request doesn't wait for it. Note that the free plan sleeps when idle.
 4. Check that `https://<service>.onrender.com/health` returns `{"status":"ok","catalog_loaded":true}`.
 
 The rate limiter reads the client IP from `X-Forwarded-For`, counting `TRUSTED_PROXY_HOPS` entries from the right (default 1, Render's proxy). Entries further left are client-controlled, so they are ignored. After the first deploy, check one `recommend ip=…` log line and confirm it shows your public IP. If it shows a proxy address instead, set `TRUSTED_PROXY_HOPS=2`.

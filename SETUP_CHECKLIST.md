@@ -50,7 +50,7 @@ Everything below needs an account, a secret, or a dashboard click. Work top to b
 
 ## 3. Render backend (5 min)
 
-1. https://dashboard.render.com → **New → Blueprint** → connect GitHub, choose `guipiacsek/carmatch`. Render reads `render.yaml` and proposes the **carmatch-api** Docker service.
+1. https://dashboard.render.com → **New → Blueprint** → connect GitHub, choose `guipiacsek/carmatch`. Render reads `render.yaml` and proposes the **carmatch-api** Python web service.
 2. Enter the prompted env vars:
 
    | Key | Value |
@@ -63,7 +63,7 @@ Everything below needs an account, a secret, or a dashboard click. Work top to b
    | `ALLOWED_ORIGIN_REGEX` | optional, for Vercel preview deploys: `^https://carmatch-[a-z0-9]+-guilherme-ps-projects\.vercel\.app$` |
 
    `OPENAI_MODEL=gpt-4.1-mini`, `RATE_LIMIT_PER_HOUR=8` and `TRUSTED_PROXY_HOPS=1` are pre-filled.
-3. **Apply**, then wait for the build (about 3 to 5 min; it downloads the EPA dataset into the image).
+3. **Apply**, then wait for the build (about 2 to 4 min; it installs the Python packages and downloads the EPA dataset).
 4. Open `https://<your-service>.onrender.com/health`. Expect `{"status":"ok","catalog_loaded":true}`. Note this URL: it is **VITE_API_URL**.
 5. After your first search (step 5), open **Logs** and find the line `recommend ip=<x.x.x.x> …`. It should show *your* public IP (compare with https://ifconfig.me). If it shows a Render or Cloudflare address, set `TRUSTED_PROXY_HOPS=2` and redeploy.
 
@@ -92,7 +92,7 @@ Everything below needs an account, a secret, or a dashboard click. Work top to b
 ## Final report
 
 **Done**
-- Monorepo: `frontend/` (React 19, Vite 8, TS strict, Tailwind v4, shadcn/ui), `backend/` (FastAPI, Pydantic v2, httpx, Dockerfile), `supabase/migrations`, `render.yaml`, `frontend/vercel.json`, README, DECISIONS.md.
+- Monorepo: `frontend/` (React 19, Vite 8, TS strict, Tailwind v4, shadcn/ui), `backend/` (FastAPI, Pydantic v2, httpx), `supabase/migrations`, `render.yaml`, `frontend/vercel.json`, README, DECISIONS.md.
 - Grounded candidate pipeline (EPA + vPIC), GPT ranking with an id enum and post-validation, relaxation with notices, Commons images with attribution, caching, a DB-backed rate limiter with in-memory fallback, optional JWT identification, CORS, payload limits.
 - The public GitHub repo is pushed, and the Vercel project is created and deployed.
 
@@ -101,7 +101,7 @@ Everything below needs an account, a secret, or a dashboard click. Work top to b
 - SQL: 5 PGlite tests pass (FIFO trigger, no eviction on duplicate, RLS, service-role-only tables, `rate_limit_hit`).
 - Frontend: strict `tsc` and production build pass. oxlint reports 0 errors and 7 warnings (React fast-refresh and setState-in-effect hints).
 - Live run against the real EPA, vPIC and Commons APIs: `/health`, `/api/makes`, `/api/recommend` (about 1.9 s uncached), 429 after the limit, cache hit afterwards.
-- Docker image builds and serves `/health` and `/api/recommend`.
+- Render build and start commands run locally in a fresh virtualenv and serve `/health` and `/api/recommend`.
 - Clicked through the browser: all 10 wizard steps, results grid, mobile layout (no horizontal scroll), guest heart → auth modal with the pending favorite stored, 429 message in the UI, no console errors.
 
 **Not verified (needs your accounts)**
