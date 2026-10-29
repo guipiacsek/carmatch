@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { useAccount } from "@/hooks/account"
+import { KEYS, save } from "@/lib/storage"
 
 export function Layout() {
   const { enabled, user, openAuth, signOut } = useAccount()
@@ -13,7 +14,12 @@ export function Layout() {
       </a>
       <header className="border-b">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
-          <Link to="/" className="text-lg font-bold tracking-tight">
+          <Link
+            to="/"
+            className="text-lg font-bold tracking-tight"
+            title="Start a new search"
+            onClick={() => [KEYS.prefs, KEYS.step, KEYS.results].forEach((k) => save(k, null))}
+          >
             Car<span className="text-primary">Match</span>
           </Link>
           <nav className="flex items-center gap-1" aria-label="Main">
