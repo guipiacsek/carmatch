@@ -28,7 +28,7 @@ services:
       - key: ALLOWED_ORIGIN_REGEX
         sync: false
       - key: RATE_LIMIT_PER_HOUR
-        value: "8"
+        value: "20"  # raised for testing; 8 for launch
       - key: DETAILS_RATE_LIMIT_PER_HOUR
         value: "40"
       - key: TRUSTED_PROXY_HOPS
