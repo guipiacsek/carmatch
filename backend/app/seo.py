@@ -213,10 +213,9 @@ def sitemap() -> str:
 
 async def main() -> None:
     await load_catalog()
-    best = os.path.join(OUT, "best")
-    os.makedirs(best, exist_ok=True)
-    for old in os.listdir(best):  # categories change; don't leave orphaned pages behind
-        os.remove(os.path.join(best, old))
+    # Everything is built in memory and written only once every list succeeded, so a failed OpenAI call
+    # can't leave frontend/public half old, half new.
+    pages: dict[str, str] = {}
     lists = []
     async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
         for slug, title, intro, raw in GUIDES:
@@ -226,15 +225,20 @@ async def main() -> None:
             if None in imgs:  # Commons lookups fail transiently under load; one retry
                 await asyncio.sleep(2)
                 imgs = [i or await find_image(client, c.year, c.make, c.model) for c, i in zip(cars, imgs, strict=True)]
-            with open(os.path.join(best, f"{slug}.html"), "w") as f:
-                f.write(guide_page(slug, title, intro, p, cars, list(imgs)))
+            pages[f"{slug}.html"] = guide_page(slug, title, intro, p, cars, list(imgs))
             # The app's Rankings page reads the same lists, photos included so cards don't look them up.
             cars = [c.model_copy(update={"image": img}) for c, img in zip(cars, imgs, strict=True)]
             lists.append({"slug": slug, "title": title, "intro": intro, "prefs": p.model_dump(),
                           "cars": [c.model_dump() for c in cars]})  # fmt: skip
             print(f"{slug}: {len(cars)} cars, {sum(i is not None for i in imgs)} photos")
-    with open(os.path.join(best, "index.html"), "w") as f:
-        f.write(index_page())
+    pages["index.html"] = index_page()
+    best = os.path.join(OUT, "best")
+    os.makedirs(best, exist_ok=True)
+    for old in os.listdir(best):  # categories change; don't leave orphaned pages behind
+        os.remove(os.path.join(best, old))
+    for name, html in pages.items():
+        with open(os.path.join(best, name), "w") as f:
+            f.write(html)
     with open(os.path.join(OUT, "sitemap.xml"), "w") as f:
         f.write(sitemap())
     with open(os.path.join(OUT, "rankings.json"), "w") as f:

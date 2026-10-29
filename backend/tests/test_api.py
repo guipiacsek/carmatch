@@ -194,3 +194,26 @@ def test_car_details_grounded_cached_and_validated(client: TestClient, monkeypat
     assert len(calls) == 1  # second open served from cache
     assert client.post("/api/car-details", json={**body, "model": "Batmobile"}).status_code == 404
     assert client.post("/api/car-details", json={**body, "model": "<script>"}).status_code == 422
+
+
+def test_warm_up_is_throttled(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+
+    calls = 0
+
+    class FakeHttp:
+        async def get(self, *args: object, **kwargs: object) -> None:
+            nonlocal calls
+            calls += 1
+
+    from dataclasses import replace
+
+    monkeypatch.setattr(main, "settings", replace(main.settings, openai_api_key="sk-test"))
+    monkeypatch.setattr(main, "_last_warm", 0.0)
+
+    async def spam() -> None:
+        for _ in range(5):  # e.g. someone hammering /health?warm=1
+            await main.warm_connections(FakeHttp())  # type: ignore[arg-type]
+
+    asyncio.run(spam())
+    assert calls == 1 + int(main.settings.supabase_enabled)  # one warm-up's worth of requests, not five
