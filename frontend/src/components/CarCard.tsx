@@ -1,5 +1,5 @@
 import { CarFront, ExternalLink, Fuel, Gauge, Heart, Users, Cog } from "lucide-react"
-import { useState } from "react"
+import { lazy, Suspense, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,8 @@ import { carName, efficiency, priceRange } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
 import type { CarImage, CarResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
+
+const CarDetailsDialog = lazy(() => import("@/components/CarDetailsDialog"))
 
 export function CarPhoto({ car, image }: { car: CarResult; image: CarImage | null | undefined }) {
   const [failed, setFailed] = useState(false)
@@ -77,6 +79,7 @@ export function CarCard({
   const [busy, setBusy] = useState(false)
   const name = carName(car)
   const image = useCarImage(car)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const specs = [
     { icon: CarFront, label: "Body", value: car.body_type },
@@ -87,7 +90,15 @@ export function CarCard({
   ]
 
   return (
-    <Card className="relative gap-0 overflow-hidden py-0">
+    <Card
+      className="relative cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-lg hover:ring-1 hover:ring-primary/40"
+      onClick={(e) => {
+        // The whole card opens details, except its own controls (heart, compare, links). Clicks inside the
+        // dialog also bubble here through the React portal; they aren't inside the card's DOM, so skip them.
+        const target = e.target as HTMLElement
+        if (e.currentTarget.contains(target) && !target.closest("a, button, input, label")) setDetailsOpen(true)
+      }}
+    >
       {showRank && (
         <Badge className="absolute top-3 left-3 z-10 shadow" aria-label={`Rank ${car.rank}`}>
           #{car.rank}
@@ -113,7 +124,17 @@ export function CarCard({
 
       <CardContent className="grid gap-4 pt-4">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg leading-tight font-semibold">{name}</h2>
+          <h2 className="text-lg leading-tight font-semibold">
+            <button
+              type="button"
+              className="text-left underline-offset-4 hover:underline focus-visible:underline"
+              onClick={() => setDetailsOpen(true)}
+              aria-haspopup="dialog"
+            >
+              {name}
+              <span className="sr-only">: more details</span>
+            </button>
+          </h2>
           {showRank && (
             <Badge variant="outline" className="shrink-0" title="How well this car fits your answers">
               {car.match_score}% match
@@ -175,6 +196,11 @@ export function CarCard({
           </a>
         </Button>
       </CardFooter>
+      {detailsOpen && (
+        <Suspense fallback={null}>
+          <CarDetailsDialog car={car} image={image} onClose={() => setDetailsOpen(false)} />
+        </Suspense>
+      )}
     </Card>
   )
 }

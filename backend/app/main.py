@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import ipaddress
 import json
 import logging
@@ -17,7 +18,17 @@ from .auth import optional_user_id
 from .candidates import TARGET_RESULTS, Candidate, build_candidates
 from .config import MAX_BODY_BYTES, USER_AGENT, settings
 from .images import find_image
-from .models import MAX_YEAR, MIN_YEAR, CarImage, CarResult, LLMPick, Preferences, RecommendResponse
+from .models import (
+    MAX_YEAR,
+    MIN_YEAR,
+    CarDetails,
+    CarDetailsRequest,
+    CarImage,
+    CarResult,
+    LLMPick,
+    Preferences,
+    RecommendResponse,
+)
 from .store import cache_get, cache_key, cache_put, rate_limit_hit
 from .vehicles import catalog, load_catalog
 
@@ -134,6 +145,65 @@ async def image(
 
 def ndjson(event: dict[str, Any]) -> bytes:
     return (json.dumps(event, separators=(",", ":")) + "\n").encode()
+
+
+def _span(xs: list[int]) -> str | None:
+    return (f"{xs[0]}-{xs[-1]}" if xs[0] != xs[-1] else str(xs[0])) if xs else None
+
+
+def epa_facts(req: CarDetailsRequest) -> dict[str, Any] | None:
+    """Verified EPA facts for the car on a card; None if it isn't in the catalog (so details can't be
+    requested for arbitrary text)."""
+    rows = [
+        v
+        for v in catalog.vehicles
+        if v.make == req.make and v.year == req.year and v.fuel == req.fuel_type and req.model.startswith(v.base_model)
+    ]
+    if not rows:
+        return None
+    base = max((v.base_model for v in rows), key=len)  # "RAV4 Prime" over "RAV4"
+    rows = [v for v in rows if v.base_model == base]
+    mpg = sorted({v.mpg for v in rows if v.mpg})
+    mpge = sorted({v.mpge for v in rows if v.mpge})
+    return {
+        "epa_class": rows[0].vclass,
+        "mpg_combined": _span(mpg),
+        "mpge_combined": _span(mpge),
+        "drivetrains": sorted({d for v in rows for d in v.drive}),
+        "transmissions": sorted({v.transmission for v in rows}),
+        "epa_model_variants": sorted({v.model for v in rows})[:10],
+    }
+
+
+@app.post("/api/car-details", response_model=CarDetails)
+async def car_details(req: CarDetailsRequest, request: Request) -> CarDetails:
+    """Second GPT call when someone opens a car card. Grounded in EPA facts, cached 7 days, rate-limited."""
+    http: httpx.AsyncClient = request.app.state.http
+    await ensure_catalog()
+    epa = epa_facts(req)
+    if epa is None:
+        raise HTTPException(404, "We don't have EPA data for that car.")
+    key = hashlib.sha256(f"details:v1:{req.model_dump_json()}".encode()).hexdigest()
+    if cached := await cache_get(http, key):
+        return CarDetails.model_validate(cached)
+    if not settings.openai_api_key:
+        raise HTTPException(503, "Car details need the AI service, which isn't configured.")
+    allowed, retry_after = await rate_limit_hit(
+        http, f"details:{client_ip(request)}", settings.details_rate_limit_per_hour
+    )
+    if not allowed:
+        raise HTTPException(
+            429,
+            "You've opened a lot of cars this hour. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    try:
+        details = await llm.car_details(http, req, epa)
+    except (httpx.HTTPError, ValueError, KeyError, IndexError) as e:
+        log.error("car details failed: %r", e)
+        raise HTTPException(502, "Couldn't load details for this car right now. Please try again.") from None
+    await cache_put(http, key, details.model_dump())
+    return details
 
 
 @app.get("/api/results/{share_id}", response_model=RecommendResponse)

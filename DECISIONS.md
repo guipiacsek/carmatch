@@ -68,6 +68,13 @@ These are choices the brief didn't settle, made while building the app autonomou
 43. **"See on Cars.com":** make and year are hard filters, the model goes in as a keyword (EPA names like "F150 Pickup" don't always match Cars.com model slugs), and the condition is "all" for current model years, otherwise "used". Cars.com is behind a bot check, so this couldn't be click-tested automatically. `listingsUrl()` in `src/lib/listings.ts` is where an affiliate ID goes.
 44. **First load:** supabase-js, the sign-in dialog, and the results, favorites and shared pages are lazy-loaded. The main bundle went from 434 KB to 331 KB (138 to 104 KB gzipped).
 
+45. **Car details on click.** Clicking a card (or its title, for keyboard users) opens a details panel and makes a second, smaller GPT call (`POST /api/car-details`).
+    - Only cars that exist in the EPA catalog are accepted, so arbitrary text can't be sent to GPT.
+    - The EPA facts (class, MPG range, drivetrains, transmissions, model variants) go in the prompt and are shown as-is.
+    - The answer is cached per car for 7 days in the same cache table, so later opens are instant and free.
+    - It has its own rate limit (`DETAILS_RATE_LIMIT_PER_HOUR`, default 40). Opening details is cheaper and more frequent than a search, and it shouldn't use up search quota.
+    - The panel says the AI text can be wrong.
+
 ## Hosting
 
 33. **No Docker.** Render runs the backend on its native Python runtime (`render.yaml`: pip install, then uvicorn). The stack is just GitHub, Vercel, Render and Supabase.

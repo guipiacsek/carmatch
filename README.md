@@ -106,6 +106,7 @@ The rate limiter reads the client IP from `X-Forwarded-For`: private `10.x` hops
 | GET | `/health` | Liveness check, plus whether the vehicle catalog has loaded |
 | GET | `/api/makes` | Brand list (vPIC ∩ EPA) |
 | GET | `/api/image?year=&make=&model=` | Commons photo + attribution for one card (loaded after results) |
+| POST | `/api/car-details` | Opened card: GPT overview, pros/cons, reliability, trims, used-buying tips, rivals, grounded in EPA facts (cached 7 days, 40/hour/IP) |
 | GET | `/api/results/{share_id}` | Shared results (the share id is the cache key; links last 7 days) |
 | GET | `/api/client-ip` | The address the rate limiter counts you under |
 | POST | `/api/recommend` | `Preferences` → NDJSON stream: `meta`, `cars` per batch, `done` with the final `RecommendResponse` (see `backend/app/models.py`, mirrored in `frontend/src/lib/types.ts`) |

@@ -79,3 +79,21 @@ export type RecommendEvent =
   | { type: "meta"; relaxed: string[]; cached: boolean }
   | { type: "cars"; cars: CarResult[] }
   | ({ type: "done" } & RecommendResponse)
+
+export interface CarDetails {
+  summary: string
+  pros: string[]
+  cons: string[]
+  reliability: string
+  trims: { name: string; highlight: string }[]
+  used_buying_tips: string[]
+  competitors: string[]
+  epa: {
+    epa_class?: string
+    mpg_combined?: string | null
+    mpge_combined?: string | null
+    drivetrains?: string[]
+    transmissions?: string[]
+    epa_model_variants?: string[]
+  }
+}

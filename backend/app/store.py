@@ -96,15 +96,17 @@ class MemoryRateLimiter:
 
 
 memory_limiter = MemoryRateLimiter(settings.rate_limit_per_hour)
+_memory_limiters = {settings.rate_limit_per_hour: memory_limiter}
 
 
-async def rate_limit_hit(client: httpx.AsyncClient, key: str) -> tuple[bool, int]:
+async def rate_limit_hit(client: httpx.AsyncClient, key: str, limit: int | None = None) -> tuple[bool, int]:
     """(allowed, retry_after_seconds). Uses the shared DB limiter when configured, else/if down, in-memory."""
+    limit = limit or settings.rate_limit_per_hour
     if settings.supabase_enabled:
         try:
             resp = await client.post(
                 f"{settings.supabase_url}/rest/v1/rpc/rate_limit_hit",
-                json={"p_key": key, "p_limit": settings.rate_limit_per_hour, "p_window_seconds": RATE_WINDOW_SECONDS},
+                json={"p_key": key, "p_limit": limit, "p_window_seconds": RATE_WINDOW_SECONDS},
                 headers=settings.supabase_headers(),
                 timeout=5,
             )
@@ -113,4 +115,4 @@ async def rate_limit_hit(client: httpx.AsyncClient, key: str) -> tuple[bool, int
             return bool(row["allowed"]), int(row["retry_after"])
         except (httpx.HTTPError, ValueError, KeyError, IndexError) as e:
             log.warning("DB rate limiter unavailable, using in-memory: %s", e)
-    return memory_limiter.hit(key)
+    return _memory_limiters.setdefault(limit, MemoryRateLimiter(limit)).hit(key)

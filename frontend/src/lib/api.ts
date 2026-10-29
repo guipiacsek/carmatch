@@ -1,5 +1,5 @@
 import { getSupabase } from "./supabase"
-import type { CarImage, CarResult, Preferences, RecommendEvent, RecommendResponse } from "./types"
+import type { CarDetails, CarImage, CarResult, Preferences, RecommendEvent, RecommendResponse } from "./types"
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000").replace(/\/$/, "")
 
@@ -101,4 +101,18 @@ export function getImage(car: Pick<CarResult, "year" | "make" | "model">): Promi
 
 export function getSharedResults(shareId: string): Promise<RecommendResponse> {
   return request<RecommendResponse>(`/api/results/${encodeURIComponent(shareId)}`)
+}
+
+const details = new Map<string, Promise<CarDetails>>()
+
+// Second GPT call when a card is opened; the backend caches it, and so do we for the session.
+export function getCarDetails(car: Pick<CarResult, "year" | "make" | "model" | "fuel_type">): Promise<CarDetails> {
+  const body = JSON.stringify({ year: car.year, make: car.make, model: car.model, fuel_type: car.fuel_type })
+  let p = details.get(body)
+  if (!p) {
+    p = request<CarDetails>("/api/car-details", { method: "POST", headers: { "Content-Type": "application/json" }, body })
+    p.catch(() => details.delete(body)) // let a failed load be retried
+    details.set(body, p)
+  }
+  return p
 }

@@ -162,3 +162,35 @@ def test_share_link_round_trip(client: TestClient) -> None:
     assert shared["results"] == final["results"] and shared["share_id"] == share_id
     assert client.get("/api/results/" + "0" * 64).status_code == 404
     assert client.get("/api/results/not-a-hash").status_code == 422
+
+
+def test_car_details_grounded_cached_and_validated(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    from app import llm
+    from app.models import CarDetails, Trim
+
+    calls: list[dict[str, object]] = []
+
+    async def fake_details(_http: object, req: object, epa: dict[str, object]) -> CarDetails:
+        calls.append(epa)
+        return CarDetails(
+            summary="s",
+            pros=["a", "b", "c"],
+            cons=["d", "e", "f"],
+            reliability="r",
+            trims=[Trim(name="LE", highlight="base")],
+            used_buying_tips=["x", "y", "z"],
+            competitors=["Honda CR-V", "Mazda CX-5", "Kia Sportage"],
+            epa=epa,
+        )
+
+    monkeypatch.setattr(main, "settings", replace(main.settings, openai_api_key="sk-test"))
+    monkeypatch.setattr(llm, "car_details", fake_details)
+    body = {"year": 2020, "make": "Toyota", "model": "RAV4", "fuel_type": "Gas"}
+    first = client.post("/api/car-details", json=body)
+    assert first.status_code == 200 and first.json()["epa"]["drivetrains"] == ["AWD", "FWD"]
+    assert client.post("/api/car-details", json=body).json() == first.json()
+    assert len(calls) == 1  # second open served from cache
+    assert client.post("/api/car-details", json={**body, "model": "Batmobile"}).status_code == 404
+    assert client.post("/api/car-details", json={**body, "model": "<script>"}).status_code == 422

@@ -29,5 +29,7 @@ services:
         sync: false
       - key: RATE_LIMIT_PER_HOUR
         value: "8"
+      - key: DETAILS_RATE_LIMIT_PER_HOUR
+        value: "40"
       - key: TRUSTED_PROXY_HOPS
         value: "2"  # X-Forwarded-For on Render: client, Cloudflare, then private 10.x hops

@@ -99,3 +99,33 @@ class LLMPick(BaseModel):
 
 class LLMResponse(BaseModel):
     picks: list[LLMPick] = Field(min_length=1, max_length=10)
+
+
+# --- Car details (second GPT call when a card is opened) ---
+
+
+class CarDetailsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    year: int = Field(ge=MIN_YEAR, le=MAX_YEAR)
+    make: Brand
+    model: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60, pattern=r"^[A-Za-z0-9 .&'/+()\-]+$")
+    ]
+    fuel_type: FuelType
+
+
+class Trim(BaseModel):
+    name: str
+    highlight: str  # what distinguishes it, e.g. "2.5L hybrid, AWD, heated seats"
+
+
+class CarDetails(BaseModel):
+    summary: str
+    pros: list[str] = Field(min_length=3, max_length=4)
+    cons: list[str] = Field(min_length=3, max_length=4)
+    reliability: str
+    trims: list[Trim] = Field(min_length=1, max_length=5)
+    used_buying_tips: list[str] = Field(min_length=3, max_length=3)
+    competitors: list[str] = Field(min_length=3, max_length=3)
+    epa: dict[str, object] = Field(default_factory=dict)  # grounded facts we sent, echoed back for display
