@@ -29,3 +29,24 @@ export function clampBudget(budget: number, condition: Condition): number {
 export const loadPrefs = (): Preferences => ({ ...DEFAULT_PREFS, ...load<Partial<Preferences>>(KEYS.prefs, {}) })
 export const savePrefs = (p: Preferences) => save(KEYS.prefs, p)
 export const hasSavedPrefs = () => load<Preferences | null>(KEYS.prefs, null) !== null
+
+const PRIORITY_LABEL: Record<string, string> = {
+  commuting: "Commuting", family: "Family", performance: "Performance", fuel_economy: "Fuel economy",
+  reliability: "Reliability", towing: "Towing", off_road: "Off-road", luxury: "Luxury",
+}
+
+/** Short labels summarizing the answers, shown as chips above the results. */
+export function prefChips(p: Preferences): string[] {
+  return [
+    { new: "New", used: "Used", either: "New or used" }[p.condition],
+    p.body_types.length ? p.body_types.join(" · ") : "Any body",
+    `≤ $${p.budget.toLocaleString("en-US")}`,
+    `${p.year_min}–${p.year_max}`,
+    ...(p.brands.length ? [p.brands.slice(0, 3).join(" · ") + (p.brands.length > 3 ? ` +${p.brands.length - 3}` : "")] : []),
+    ...(p.fuel_types.length ? [p.fuel_types.join(" · ")] : []),
+    ...(p.drivetrain !== "any" ? [p.drivetrain] : []),
+    ...(p.transmission !== "any" ? [p.transmission === "auto" ? "Automatic" : "Manual"] : []),
+    ...(p.min_seats > 2 ? [`${p.min_seats}+ seats`] : []),
+    ...(p.priorities.length ? [p.priorities.map((x) => PRIORITY_LABEL[x]).join(" · ")] : []),
+  ]
+}

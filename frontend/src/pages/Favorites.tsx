@@ -31,8 +31,8 @@ export default function Favorites() {
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">My favorites</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">My favorites</h1>
+        <p className="text-sm font-light text-muted-foreground">
           Up to {MAX_FAVORITES} cars. Saving more replaces your oldest one.
         </p>
       </div>

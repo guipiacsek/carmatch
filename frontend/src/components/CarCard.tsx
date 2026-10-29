@@ -1,13 +1,11 @@
-import { CarFront, ExternalLink, Fuel, Gauge, Heart, Users, Cog } from "lucide-react"
+import { CarFront, ExternalLink, Heart } from "lucide-react"
 import { lazy, Suspense, useState } from "react"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAccount } from "@/hooks/account"
 import { useCarImage } from "@/hooks/useCarImage"
-import { carName, efficiency, priceRange } from "@/lib/format"
+import { carName, priceRange } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
 import type { CarImage, CarResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -65,12 +63,48 @@ export interface CompareControl {
   onToggle: () => void
 }
 
+/** Arc color by position: gray, red, mustard, navy (see --arc-* in index.css). */
+export const arcColor = (index: number) => `var(--arc-${(index % 4) + 1})`
+
+const FUEL_SHORT: Record<CarResult["fuel_type"], string> = {
+  Gas: "Gas",
+  Hybrid: "Hybrid",
+  "Plug-in Hybrid": "PHEV",
+  Electric: "EV",
+  Diesel: "Diesel",
+}
+
+function ArcPhoto({ car, image }: { car: CarResult; image: CarImage | null | undefined }) {
+  const [failed, setFailed] = useState(false)
+  const box = "absolute top-12 -right-9 h-[140px] w-[270px] rounded-[18px] shadow-[0_18px_30px_#0003]"
+  if (image === undefined) return <Skeleton className={cn(box, "bg-white/40")} />
+  if (!image || failed) {
+    return (
+      <div className={cn(box, "grid place-items-center bg-white/25 text-white")} role="img" aria-label={`No photo of ${carName(car)}`}>
+        <CarFront className="size-12" aria-hidden />
+      </div>
+    )
+  }
+  return (
+    <img
+      src={image.url}
+      alt={carName(car)}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className={cn(box, "bg-white/30 object-cover")}
+    />
+  )
+}
+
 export function CarCard({
   car,
+  index = 0,
   showRank = true,
   compare,
 }: {
   car: CarResult
+  index?: number
   showRank?: boolean
   compare?: CompareControl
 }) {
@@ -80,18 +114,19 @@ export function CarCard({
   const name = carName(car)
   const image = useCarImage(car)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const color = arcColor(index)
 
-  const specs = [
-    { icon: CarFront, label: "Body", value: car.body_type },
-    { icon: Gauge, label: "Efficiency", value: efficiency(car) },
-    { icon: Fuel, label: "Fuel", value: car.fuel_type },
-    { icon: Cog, label: "Drivetrain", value: car.drivetrain },
-    { icon: Users, label: "Seats", value: String(car.seats) },
+  const chips = [
+    { label: "Fuel", value: FUEL_SHORT[car.fuel_type] },
+    { label: "Drivetrain", value: car.drivetrain.split(" / ")[0] },
+    { label: "Seats", value: car.seats, unit: "seats" },
+    { label: "Efficiency", value: car.fuel_type === "Electric" ? car.mpge : car.mpg, unit: car.fuel_type === "Electric" ? "mpge" : "mpg" },
   ]
 
   return (
-    <Card
-      className="relative cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-lg hover:ring-1 hover:ring-primary/40"
+    <article
+      className="group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[26px] bg-card text-card-foreground shadow-[0_2px_0_#0000000a] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_22px_40px_#0000001f]"
+      style={{ "--c": color } as React.CSSProperties}
       onClick={(e) => {
         // The whole card opens details, except its own controls (heart, compare, links). Clicks inside the
         // dialog also bubble here through the React portal; they aren't inside the card's DOM, so skip them.
@@ -99,108 +134,130 @@ export function CarCard({
         if (e.currentTarget.contains(target) && !target.closest("a, button, input, label")) setDetailsOpen(true)
       }}
     >
-      {showRank && (
-        <Badge className="absolute top-3 left-3 z-10 shadow" aria-label={`Rank ${car.rank}`}>
-          #{car.rank}
-        </Badge>
-      )}
-      <Button
-        size="icon"
-        variant="secondary"
-        className="absolute top-2 right-2 z-10 size-10 rounded-full shadow"
-        aria-label={fav ? `Remove ${name} from favorites` : `Save ${name} to favorites`}
-        aria-pressed={fav}
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true)
-          await toggleFavorite({ ...car, image: image ?? null }) // keep the photo credit with the favorite
-          setBusy(false)
-        }}
-      >
-        <Heart className={cn("size-5", fav && "fill-red-500 text-red-500")} aria-hidden />
-      </Button>
+      <div className="relative h-[300px] shrink-0 text-white">
+        <div aria-hidden className="absolute -top-[60px] -left-10 h-[380px] w-[calc(100%+30px)] rounded-br-[300px] bg-[var(--c)] opacity-95" />
+        {showRank && (
+          <p className="absolute top-4 left-[18px] text-[13px] font-extrabold tracking-[2px]">
+            #{car.rank} · {car.match_score}%<span className="sr-only"> match</span>
+          </p>
+        )}
+        <ArcPhoto car={car} image={image} />
+        <h2 className="absolute right-14 bottom-[18px] left-[18px] leading-[1.05]">
+          <button
+            type="button"
+            className="text-left underline-offset-4 focus-visible:underline"
+            onClick={() => setDetailsOpen(true)}
+            aria-haspopup="dialog"
+          >
+            <span className="block text-2xl font-extralight tracking-wide uppercase">{car.make}</span>
+            <span className="block text-[22px] font-extrabold">{car.model}</span>
+            <span className="block text-xs font-light opacity-85">{car.year}</span>
+            <span className="sr-only">: more details</span>
+          </button>
+        </h2>
+        <button
+          type="button"
+          className="absolute right-3 bottom-4 grid size-10 place-items-center rounded-full text-white transition hover:bg-white/20 disabled:opacity-60"
+          aria-label={fav ? `Remove ${name} from favorites` : `Save ${name} to favorites`}
+          aria-pressed={fav}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            await toggleFavorite({ ...car, image: image ?? null }) // keep the photo credit with the favorite
+            setBusy(false)
+          }}
+        >
+          <Heart className={cn("size-5", fav && "fill-white")} aria-hidden />
+        </button>
+      </div>
 
-      <CarPhoto car={car} image={image} />
-
-      <CardContent className="grid gap-4 pt-4">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg leading-tight font-semibold">
-            <button
-              type="button"
-              className="text-left underline-offset-4 hover:underline focus-visible:underline"
-              onClick={() => setDetailsOpen(true)}
-              aria-haspopup="dialog"
+      <div className="flex flex-1 flex-col gap-3.5 px-[18px] pt-[18px] pb-4">
+        <p className="label-caps text-muted-foreground">More information</p>
+        <dl className="flex gap-2.5">
+          {chips.map((c, i) => (
+            <div
+              key={c.label}
+              title={c.label}
+              className={cn(
+                "grid size-[46px] place-items-center rounded-full bg-muted text-center text-[10px] leading-tight font-bold text-muted-foreground",
+                i === 0 && "bg-[var(--c)] text-white",
+              )}
             >
-              {name}
-              <span className="sr-only">: more details</span>
-            </button>
-          </h2>
-          {showRank && (
-            <Badge variant="outline" className="shrink-0" title="How well this car fits your answers">
-              {car.match_score}% match
-            </Badge>
-          )}
-        </div>
-
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          {specs.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="flex items-center gap-2">
-              <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              <dt className="sr-only">{label}</dt>
-              <dd className="truncate">{value}</dd>
+              <dt className="sr-only">{c.label}</dt>
+              <dd>
+                {c.value ?? "–"}
+                {c.unit && <span className="block font-semibold">{c.unit}</span>}
+              </dd>
             </div>
           ))}
         </dl>
 
-        <div className="rounded-lg bg-muted/60 px-3 py-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">AI estimate</span>
-            {car.over_budget && <Badge variant="destructive">Above budget</Badge>}
+        <p className="label-caps text-muted-foreground">
+          AI estimate
+          {car.over_budget && <span className="ml-2 text-primary">Above budget</span>}
+        </p>
+        <dl className="grid gap-2 rounded-[10px] border px-3 py-2.5 text-xs">
+          <div>
+            <dt className="label-caps text-[9px] text-muted-foreground">Price range</dt>
+            <dd className="text-sm font-semibold">{priceRange(car)}</dd>
           </div>
-          <p className="text-base font-semibold">{priceRange(car)}</p>
+          <div>
+            <dt className="label-caps text-[9px] text-muted-foreground">Why it fits</dt>
+            <dd>
+              <ul className="mt-1 grid gap-1">
+                {car.bullets.map((b) => (
+                  <li key={b} className="flex gap-1.5 font-medium">
+                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[var(--c)]" aria-hidden />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        </dl>
+
+        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+          {compare ? (
+            <label
+              className={cn(
+                "flex cursor-pointer items-center gap-2 text-xs font-semibold select-none",
+                compare.disabled && "cursor-not-allowed opacity-50",
+              )}
+              title={compare.disabled ? "You can compare up to 3 cars" : undefined}
+            >
+              <input
+                type="checkbox"
+                className="size-4 accent-primary"
+                checked={compare.selected}
+                disabled={compare.disabled}
+                onChange={compare.onToggle}
+              />
+              Compare
+            </label>
+          ) : (
+            <span />
+          )}
+          <Button asChild size="sm" className="rounded-full">
+            <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
+              Cars.com <ExternalLink className="size-3.5" aria-hidden />
+              <span className="sr-only"> listings for {name} (opens in a new tab)</span>
+            </a>
+          </Button>
         </div>
-
-        <ul className="grid gap-1.5 text-sm">
-          {car.bullets.map((b) => (
-            <li key={b} className="flex gap-2">
-              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-              {b}
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-
-      <CardFooter className="mt-auto flex-col items-stretch gap-3 pt-4 pb-4">
-        {compare && (
-          <label
-            className={cn(
-              "flex cursor-pointer items-center gap-2 text-sm select-none",
-              compare.disabled && "cursor-not-allowed opacity-50",
-            )}
-            title={compare.disabled ? "You can compare up to 3 cars" : undefined}
-          >
-            <input
-              type="checkbox"
-              className="size-4 accent-primary"
-              checked={compare.selected}
-              disabled={compare.disabled}
-              onChange={compare.onToggle}
-            />
-            Compare
-          </label>
+        {image && (
+          <p className="truncate text-[9px] text-muted-foreground">
+            Photo:{" "}
+            <a href={image.page_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+              {image.author}, {image.license}
+            </a>
+          </p>
         )}
-        <Button asChild variant="outline" className="w-full">
-          <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
-            See on Cars.com <ExternalLink className="size-4" aria-hidden />
-            <span className="sr-only"> for {name} (opens in a new tab)</span>
-          </a>
-        </Button>
-      </CardFooter>
+      </div>
       {detailsOpen && (
         <Suspense fallback={null}>
-          <CarDetailsDialog car={car} image={image} onClose={() => setDetailsOpen(false)} />
+          <CarDetailsDialog car={car} image={image} color={color} onClose={() => setDetailsOpen(false)} />
         </Suspense>
       )}
-    </Card>
+    </article>
   )
 }

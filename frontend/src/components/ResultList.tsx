@@ -1,9 +1,9 @@
-import { Check, ExternalLink, X } from "lucide-react"
-import { useState } from "react"
+import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react"
+import { useRef, useState } from "react"
 
 import { CarCard, CarPhoto } from "@/components/CarCard"
-import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useCarImage } from "@/hooks/useCarImage"
 import { carName, efficiency, priceRange } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
@@ -12,22 +12,43 @@ import { cn } from "@/lib/utils"
 
 const MAX_COMPARE = 3
 
-/** Car grid with "Compare" checkboxes, a sticky compare bar, and the side-by-side dialog. */
-export function ResultList({ cars, showRank = true, ordered = true }: { cars: CarResult[]; showRank?: boolean; ordered?: boolean }) {
+const CARD_STEP = 310 // card width (290) + gap (20)
+
+/** Horizontal Color Arc carousel with "Compare" checkboxes, a floating control pill, and the compare dialog.
+ *  `pending` adds skeleton cards while results are still streaming in. */
+export function ResultList({
+  cars,
+  showRank = true,
+  ordered = true,
+  pending = 0,
+}: {
+  cars: CarResult[]
+  showRank?: boolean
+  ordered?: boolean
+  pending?: number
+}) {
   const [picked, setPicked] = useState<string[]>([])
   const [open, setOpen] = useState(false)
+  const row = useRef<HTMLOListElement & HTMLUListElement>(null)
   const chosen = picked.map((k) => cars.find((c) => c.car_key === k)).filter((c): c is CarResult => !!c)
   const toggle = (key: string) =>
     setPicked((p) => (p.includes(key) ? p.filter((k) => k !== key) : p.length < MAX_COMPARE ? [...p, key] : p))
+  const scroll = (dir: number) => row.current?.scrollBy({ left: dir * CARD_STEP, behavior: "smooth" })
   const List = ordered ? "ol" : "ul"
 
   return (
     <>
-      <List className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {cars.map((car) => (
-          <li key={car.car_key} className="flex [&>*]:w-full">
+      <List
+        ref={row}
+        tabIndex={0}
+        aria-label="Cars, scroll sideways for more"
+        className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-px-4 px-4 pt-2 pb-8 outline-none [scrollbar-width:none] sm:-mx-1 sm:px-1 [&::-webkit-scrollbar]:hidden"
+      >
+        {cars.map((car, i) => (
+          <li key={car.car_key} className="flex w-[290px] shrink-0 snap-start">
             <CarCard
               car={car}
+              index={i}
               showRank={showRank}
               compare={{
                 selected: picked.includes(car.car_key),
@@ -37,19 +58,51 @@ export function ResultList({ cars, showRank = true, ordered = true }: { cars: Ca
             />
           </li>
         ))}
+        {Array.from({ length: pending }, (_, i) => (
+          <li key={`pending-${i}`} aria-hidden className="w-[290px] shrink-0 snap-start">
+            <div className="h-[560px] overflow-hidden rounded-[26px] bg-card">
+              <Skeleton className="h-[300px] rounded-none rounded-br-[220px]" />
+              <div className="grid gap-3 p-5">
+                <Skeleton className="h-3 w-1/2" />
+                <div className="flex gap-2.5">
+                  {[0, 1, 2, 3].map((k) => (
+                    <Skeleton key={k} className="size-[46px] rounded-full" />
+                  ))}
+                </div>
+                <Skeleton className="h-24 w-full" />
+              </div>
+            </div>
+          </li>
+        ))}
       </List>
 
-      {chosen.length > 0 && (
-        <div className="sticky bottom-4 z-20 mx-auto flex w-fit items-center gap-3 rounded-full border bg-background/95 py-2 pr-2 pl-5 shadow-lg backdrop-blur">
-          <span className="text-sm" aria-live="polite">
-            {chosen.length} of {MAX_COMPARE} selected
-          </span>
-          <Button size="sm" variant="ghost" onClick={() => setPicked([])}>
-            Clear
-          </Button>
-          <Button size="sm" disabled={chosen.length < 2} onClick={() => setOpen(true)}>
-            Compare {chosen.length > 1 ? chosen.length : ""}
-          </Button>
+      {cars.length > 1 && (
+        <div
+          className="fixed bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-md bg-[#8c8c8c] p-1.5 text-white shadow-[0_10px_30px_#0003] dark:bg-[#3a3a3d]"
+          role="toolbar"
+          aria-label="Browse and compare"
+        >
+          <button type="button" className="rounded px-3 py-1.5 hover:bg-white/15" onClick={() => scroll(-1)} aria-label="Previous cars">
+            <ChevronLeft className="size-4" aria-hidden />
+          </button>
+          <button type="button" className="rounded px-3 py-1.5 hover:bg-white/15" onClick={() => scroll(1)} aria-label="Next cars">
+            <ChevronRight className="size-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:opacity-60 disabled:hover:bg-transparent"
+            disabled={chosen.length < 2}
+            onClick={() => setOpen(true)}
+            title={chosen.length < 2 ? "Tick Compare on 2 or 3 cars" : undefined}
+          >
+            <ArrowLeftRight className="size-4" aria-hidden />
+            <span aria-live="polite">Compare{chosen.length ? ` (${chosen.length})` : ""}</span>
+          </button>
+          {chosen.length > 0 && (
+            <button type="button" className="rounded px-2 py-1.5 hover:bg-white/15" onClick={() => setPicked([])} aria-label="Clear comparison">
+              <X className="size-4" aria-hidden />
+            </button>
+          )}
         </div>
       )}
 

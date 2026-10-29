@@ -2,14 +2,12 @@ import { Info, Pencil, RotateCcw } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { Link, Navigate } from "react-router-dom"
 
-import { CarCard } from "@/components/CarCard"
 import { ResultList } from "@/components/ResultList"
 import { ShareButton } from "@/components/ShareButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import { ApiError, recommend } from "@/lib/api"
-import { hasSavedPrefs, loadPrefs } from "@/lib/preferences"
+import { hasSavedPrefs, loadPrefs, prefChips } from "@/lib/preferences"
 import { KEYS, load, save } from "@/lib/storage"
 import type { CarResult, RecommendResponse } from "@/lib/types"
 
@@ -66,25 +64,32 @@ export default function Results() {
   if (!hasSavedPrefs()) return <Navigate to="/" replace />
 
   const editLink = (
-    <Button asChild variant="outline">
-      <Link to="/" onClick={() => save(KEYS.step, 0)}>
-        <Pencil aria-hidden /> Edit answers
+    <Button asChild variant="secondary" size="icon" className="size-14 rounded-[18px] shadow-[0_6px_20px_#0000001a]">
+      <Link to="/" onClick={() => save(KEYS.step, 0)} aria-label="Edit answers" title="Edit answers">
+        <Pencil className="size-5" aria-hidden />
       </Link>
     </Button>
   )
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Your top matches</h1>
-          <p className="text-sm text-muted-foreground">Ranked from EPA vehicle data by AI. Prices are estimates.</p>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="mr-auto">
+          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">Your matches</h1>
+          <p className="text-sm font-light text-muted-foreground">Ranked by AI from EPA vehicle data. Prices are estimates.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-3">
           {state.kind === "done" && state.data.share_id && <ShareButton shareId={state.data.share_id} />}
           {editLink}
         </div>
       </div>
+      <ul className="-mt-2 flex flex-wrap gap-2" aria-label="Your answers">
+        {prefChips(loadPrefs()).map((c) => (
+          <li key={c} className="rounded-full bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            {c}
+          </li>
+        ))}
+      </ul>
 
       <div aria-live="polite" aria-busy={state.kind === "loading"}>
         {state.kind === "loading" && (
@@ -94,26 +99,10 @@ export default function Results() {
                 ? `Found ${state.cars.length} so far, finding more…`
                 : "Finding cars that fit you. This takes a few seconds…"}
             </p>
-            <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {state.cars.map((car, i) => (
-                <li key={car.car_key} className="flex [&>*]:w-full">
-                  <CarCard car={{ ...car, rank: i + 1 }} />
-                </li>
-              ))}
-              {Array.from({ length: Math.max(0, MAX_RESULTS - state.cars.length) }, (_, i) => (
-                <li key={`pending-${i}`} aria-hidden>
-                  <Card className="gap-0 overflow-hidden py-0">
-                    <Skeleton className="aspect-[16/10] rounded-none" />
-                    <CardContent className="grid gap-3 py-4">
-                      <Skeleton className="h-6 w-3/4" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-5/6" />
-                      <Skeleton className="h-12 w-full" />
-                    </CardContent>
-                  </Card>
-                </li>
-              ))}
-            </ol>
+            <ResultList
+              cars={state.cars.map((car, i) => ({ ...car, rank: i + 1 }))}
+              pending={Math.max(0, MAX_RESULTS - state.cars.length)}
+            />
           </div>
         )}
 

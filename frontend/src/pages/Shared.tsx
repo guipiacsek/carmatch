@@ -31,8 +31,8 @@ export default function Shared() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Shared car matches</h1>
-          <p className="text-sm text-muted-foreground">Someone shared these CarMatch results with you.</p>
+          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">Shared car matches</h1>
+          <p className="text-sm font-light text-muted-foreground">Someone shared these CarMatch results with you.</p>
         </div>
         {startLink}
       </div>
@@ -45,7 +45,7 @@ export default function Shared() {
             </CardContent>
           </Card>
         )}
-        {!data && !error && <p className="text-sm text-muted-foreground">Loading shared results…</p>}
+        {!data && !error && <p className="text-sm font-light text-muted-foreground">Loading shared results…</p>}
         {data && (
           <div className="grid gap-6">
             {data.notice && (

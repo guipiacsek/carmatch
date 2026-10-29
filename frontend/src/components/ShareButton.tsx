@@ -19,7 +19,10 @@ export function ShareButton({ shareId }: { shareId: string }) {
     }
   }
   return (
-    <Button variant="outline" onClick={share}>
+    <Button
+      onClick={share}
+      className="h-14 rounded-[22px] px-7 text-base font-bold shadow-[0_10px_30px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
+    >
       <Share2 aria-hidden /> Share
     </Button>
   )

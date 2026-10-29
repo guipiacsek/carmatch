@@ -89,3 +89,4 @@ These are choices the brief didn't settle, made while building the app autonomou
 30. **"See listings"** points to a Google search for now. `listingsUrl()` in `CarCard.tsx` is the single place to swap in affiliate links.
 31. **Dark mode** follows the OS setting, with no toggle.
 32. **Tooling:** the current Vite template ships TypeScript 7 and oxlint. Strict mode is on. shadcn/ui uses the radix-nova preset with a blue primary color.
+- Visual design: "Color Arc" (chosen from design-concepts/1). Montserrat, light gray canvas, each result card carries a colored arc (`--arc-1..4`), results scroll as a horizontal snap carousel with a floating toolbar, desktop nav is a slim left rail.
