@@ -7,7 +7,7 @@ Everything below needs an account, a secret, or a dashboard click. Work top to b
 | | |
 |---|---|
 | GitHub repo (public) | https://github.com/guipiacsek/carmatch |
-| Vercel project `carmatch` (team guilherme-ps-projects) | https://carmatch-xi.vercel.app. Deployed from the CLI with no env vars yet, so searches fail until step 4. |
+| Vercel project `carmatch` (team guilherme-ps-projects) | https://mycarmatch.vercel.app. Deployed from the CLI with no env vars yet, so searches fail until step 4. |
 | Render | Not created (no `RENDER_API_KEY` was available) |
 | Supabase | Not created (no Supabase CLI or login was available) |
 
@@ -21,8 +21,8 @@ Everything below needs an account, a secret, or a dashboard click. Work top to b
    - Email: **enabled**, "Confirm email" **on**
    - Every other provider: off
 4. **Authentication → URL Configuration**:
-   - Site URL: `https://carmatch-xi.vercel.app`
-   - Redirect URLs (add both): `https://carmatch-xi.vercel.app/**` and `http://localhost:5173/**`
+   - Site URL: `https://mycarmatch.vercel.app`
+   - Redirect URLs (add both): `https://mycarmatch.vercel.app/**` and `http://localhost:5173/**`
 5. **Custom SMTP via Resend:**
    1. Sign up at https://resend.com → **Domains → Add domain** (a domain you own) → add the DNS records it shows → wait for "Verified".
    2. Resend **API Keys → Create** (permission: Sending access) → copy the key `re_…`.
@@ -59,7 +59,7 @@ Everything below needs an account, a secret, or a dashboard click. Work top to b
    | `SUPABASE_URL` | `https://<ref>.supabase.co` |
    | `SUPABASE_SERVICE_ROLE_KEY` | service_role / `sb_secret_…` key |
    | `SUPABASE_JWT_SECRET` | legacy JWT secret, or leave blank |
-   | `ALLOWED_ORIGINS` | `https://carmatch-xi.vercel.app` |
+   | `ALLOWED_ORIGINS` | `https://mycarmatch.vercel.app` |
    | `ALLOWED_ORIGIN_REGEX` | optional, for Vercel preview deploys: `^https://carmatch-[a-z0-9]+-guilherme-ps-projects\.vercel\.app$` |
 
    `OPENAI_MODEL=gpt-4.1-mini`, `RATE_LIMIT_PER_HOUR=8` and `TRUSTED_PROXY_HOPS=1` are pre-filled.
