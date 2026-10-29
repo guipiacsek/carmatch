@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+# Per-visitor pages: a search in progress, saved favorites, shared result links
+Disallow: /results
+Disallow: /favorites
+Disallow: /r/
+
+Sitemap: https://mycarmatch.vercel.app/sitemap.xml

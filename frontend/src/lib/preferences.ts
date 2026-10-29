@@ -30,6 +30,21 @@ export const loadPrefs = (): Preferences => ({ ...DEFAULT_PREFS, ...load<Partial
 export const savePrefs = (p: Preferences) => save(KEYS.prefs, p)
 export const hasSavedPrefs = () => load<Preferences | null>(KEYS.prefs, null) !== null
 
+/** Guide pages link to /results?p=<preferences JSON>; adopt those answers as the current search.
+ *  Unknown keys are dropped here and the backend validates the rest. */
+export function takePresetFromUrl(): void {
+  const raw = new URLSearchParams(window.location.search).get("p")
+  if (!raw) return
+  try {
+    const p = JSON.parse(raw) as Record<string, unknown>
+    const picked = Object.fromEntries(Object.entries(p).filter(([k]) => k in DEFAULT_PREFS))
+    savePrefs({ ...DEFAULT_PREFS, ...picked } as Preferences)
+  } catch {
+    /* malformed link: fall through to the saved search or the wizard */
+  }
+  window.history.replaceState(null, "", window.location.pathname)
+}
+
 const PRIORITY_LABEL: Record<string, string> = {
   commuting: "Commuting", family: "Family", performance: "Performance", fuel_economy: "Fuel economy",
   reliability: "Reliability", towing: "Towing", off_road: "Off-road", luxury: "Luxury",

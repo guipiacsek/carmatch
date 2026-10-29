@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/ShareButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ApiError, getImage, recommend } from "@/lib/api"
-import { hasSavedPrefs, loadPrefs, prefChips } from "@/lib/preferences"
+import { hasSavedPrefs, loadPrefs, prefChips, takePresetFromUrl } from "@/lib/preferences"
 import { KEYS, load, save } from "@/lib/storage"
 import type { CarResult, RecommendResponse } from "@/lib/types"
 
@@ -29,6 +29,7 @@ function friendlyError(e: unknown): string {
 }
 
 export default function Results() {
+  useState(takePresetFromUrl) // once, before the saved-prefs check below
   const [state, setState] = useState<
     | { kind: "loading"; cars: CarResult[] } // cars stream in as each GPT batch finishes
     | { kind: "error"; message: string; retryable: boolean }

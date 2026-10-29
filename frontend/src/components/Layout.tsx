@@ -97,7 +97,10 @@ export function Layout() {
           </p>
           <p>
             Vehicle data from fueleconomy.gov (EPA/DOE). Photos from Wikimedia Commons contributors,
-            credited on each card. "See listings" links may become affiliate links.
+            credited on each card. "See listings" links may become affiliate links.{" "}
+            <a href="/best" className="underline underline-offset-2">
+              Car buying guides
+            </a>
           </p>
         </footer>
       </div>
