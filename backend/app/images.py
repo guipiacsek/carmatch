@@ -42,7 +42,7 @@ async def _search(client: httpx.AsyncClient, query: str, model: str, year: int) 
         "gsrlimit": "10",
         "prop": "imageinfo",
         "iiprop": "url|extmetadata|mime",
-        "iiurlwidth": "800",
+        "iiurlwidth": "500",  # a standard Commons thumb size; cards are ~360px wide (960px was 3x the bytes)
         "iiextmetadatafilter": "Artist|LicenseShortName|LicenseUrl",
     }
     resp = await client.get(COMMONS_API, params=params, timeout=6)

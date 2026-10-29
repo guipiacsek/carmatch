@@ -1,0 +1,18 @@
+# Render's free tier sleeps after ~15 idle minutes; a cold start adds 30-60 s to the first search.
+# Pinging every 10 minutes keeps it awake (about 744 instance hours a month, inside the 750 free hours,
+# as long as this is the only free service in that Render workspace).
+# GitHub may run scheduled jobs a few minutes late, and pauses them after 60 days without repo activity.
+name: Keep Render awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /health
+        run: curl -fsS --retry 3 --retry-delay 10 --max-time 90 https://carmatch-api-tygz.onrender.com/health

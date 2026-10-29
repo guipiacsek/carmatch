@@ -45,6 +45,7 @@ function CarPhoto({ car, image }: { car: CarResult; image: CarImage | null | und
         src={image.url}
         alt={name}
         loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
         className="aspect-[16/10] w-full bg-muted object-cover"
       />
