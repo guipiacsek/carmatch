@@ -152,3 +152,13 @@ def test_client_ip_skips_render_internal_hops(client: TestClient) -> None:
         "/api/client-ip", headers={"X-Forwarded-For": "1.1.1.1, 8.8.8.8, 104.22.14.138, 10.199.143.70"}
     ).json()
     assert ip["ip"] == "8.8.8.8"  # 10.x = Render LB, 104.x = Cloudflare, 1.1.1.1 = client-supplied (ignored)
+
+
+def test_share_link_round_trip(client: TestClient) -> None:
+    final = done(client.post("/api/recommend", json={**BODY, "budget": 27500}))
+    share_id = final["share_id"]
+    assert isinstance(share_id, str) and len(share_id) == 64
+    shared = client.get(f"/api/results/{share_id}").json()
+    assert shared["results"] == final["results"] and shared["share_id"] == share_id
+    assert client.get("/api/results/" + "0" * 64).status_code == 404
+    assert client.get("/api/results/not-a-hash").status_code == 422

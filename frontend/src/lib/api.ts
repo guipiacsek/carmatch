@@ -1,4 +1,4 @@
-import { supabase } from "./supabase"
+import { getSupabase } from "./supabase"
 import type { CarImage, CarResult, Preferences, RecommendEvent, RecommendResponse } from "./types"
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000").replace(/\/$/, "")
@@ -49,7 +49,7 @@ export async function recommend(
   onCars: (cars: CarResult[]) => void,
   signal?: AbortSignal,
 ): Promise<RecommendResponse> {
-  const token = (await supabase?.auth.getSession())?.data.session?.access_token
+  const token = (await (await getSupabase())?.auth.getSession())?.data.session?.access_token
   const res = await send("/api/recommend", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -97,4 +97,8 @@ export function getImage(car: Pick<CarResult, "year" | "make" | "model">): Promi
     images.set(qs, p)
   }
   return p
+}
+
+export function getSharedResults(shareId: string): Promise<RecommendResponse> {
+  return request<RecommendResponse>(`/api/results/${encodeURIComponent(shareId)}`)
 }

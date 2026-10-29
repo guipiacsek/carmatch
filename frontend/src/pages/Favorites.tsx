@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 
-import { CarCard } from "@/components/CarCard"
+import { ResultList } from "@/components/ResultList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { MAX_FAVORITES, useAccount } from "@/hooks/account"
@@ -41,13 +41,7 @@ export default function Favorites() {
           <CardContent className="grid justify-items-start gap-4">{body}</CardContent>
         </Card>
       ) : (
-        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {favorites.map((f) => (
-            <li key={f.car_key} className="flex [&>*]:w-full">
-              <CarCard car={f.car_data} showRank={false} />
-            </li>
-          ))}
-        </ul>
+        <ResultList cars={favorites.map((f) => f.car_data)} showRank={false} ordered={false} />
       )}
     </div>
   )

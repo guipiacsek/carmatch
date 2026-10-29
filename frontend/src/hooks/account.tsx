@@ -1,10 +1,9 @@
 import type { User } from "@supabase/supabase-js"
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
-import { AuthDialog } from "@/components/AuthDialog"
 import { KEYS, load, save } from "@/lib/storage"
-import { supabase } from "@/lib/supabase"
+import { getSupabase, supabaseEnabled } from "@/lib/supabase"
 import type { CarResult } from "@/lib/types"
 
 export const MAX_FAVORITES = 10 // enforced by a DB trigger; mirrored here only for messaging
@@ -27,6 +26,7 @@ interface Account {
 }
 
 const AccountContext = createContext<Account | null>(null)
+const AuthDialog = lazy(() => import("@/components/AuthDialog").then((m) => ({ default: m.AuthDialog })))
 
 export function AccountProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -35,13 +35,22 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [authOpen, setAuthOpen] = useState(false)
 
   useEffect(() => {
-    if (!supabase) return
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
-    return () => data.subscription.unsubscribe()
+    let unsubscribe = () => {}
+    let live = true
+    getSupabase().then((supabase) => {
+      if (!supabase || !live) return
+      supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
+      unsubscribe = () => data.subscription.unsubscribe()
+    })
+    return () => {
+      live = false
+      unsubscribe()
+    }
   }, [])
 
   const refresh = useCallback(async () => {
+    const supabase = await getSupabase()
     if (!supabase) return []
     const { data, error } = await supabase
       .from("favorites")
@@ -57,6 +66,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const add = useCallback(
     async (car: CarResult, current: Favorite[]) => {
+      const supabase = await getSupabase()
       if (!supabase) return
       if (current.some((f) => f.car_key === car.car_key)) return
       const { error } = await supabase.from("favorites").insert({ car_key: car.car_key, car_data: car })
@@ -99,6 +109,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const toggleFavorite = useCallback(
     async (car: CarResult) => {
+      const supabase = await getSupabase()
       if (!supabase) {
         toast.error("Accounts aren't configured on this deployment.")
         return
@@ -121,7 +132,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Account>(
     () => ({
-      enabled: !!supabase,
+      enabled: supabaseEnabled,
       user,
       favorites,
       favoritesLoading,
@@ -129,7 +140,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       toggleFavorite,
       openAuth: () => setAuthOpen(true),
       signOut: async () => {
-        await supabase?.auth.signOut()
+        await (await getSupabase())?.auth.signOut()
       },
     }),
     [user, favorites, favoritesLoading, toggleFavorite],
@@ -138,13 +149,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   return (
     <AccountContext.Provider value={value}>
       {children}
-      <AuthDialog
-        open={authOpen}
-        onClose={(keepPending) => {
-          setAuthOpen(false)
-          if (!keepPending) save(KEYS.pendingFavorite, null, localStorage)
-        }}
-      />
+      {authOpen && ( // lazy: the dialog and its form code load the first time someone signs in
+        <Suspense fallback={null}>
+          <AuthDialog
+            open={authOpen}
+            onClose={(keepPending) => {
+              setAuthOpen(false)
+              if (!keepPending) save(KEYS.pendingFavorite, null, localStorage)
+            }}
+          />
+        </Suspense>
+      )}
     </AccountContext.Provider>
   )
 }

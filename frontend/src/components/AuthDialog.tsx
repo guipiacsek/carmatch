@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { supabase } from "@/lib/supabase"
+import { getSupabase } from "@/lib/supabase"
 
 type Mode = "signin" | "signup"
 
@@ -19,6 +19,7 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: (keepPen
 
   async function submit(e: FormEvent) {
     e.preventDefault()
+    const supabase = await getSupabase()
     if (!supabase) return
     setBusy(true)
     setError(null)

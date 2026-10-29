@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -136,6 +136,15 @@ def ndjson(event: dict[str, Any]) -> bytes:
     return (json.dumps(event, separators=(",", ":")) + "\n").encode()
 
 
+@app.get("/api/results/{share_id}", response_model=RecommendResponse)
+async def shared_results(request: Request, share_id: str = Path(pattern=r"^[0-9a-f]{64}$")) -> RecommendResponse:
+    """A shared results link. The id is the SHA-256 cache key, so it can't be guessed or enumerated."""
+    cached = await cache_get(request.app.state.http, share_id)
+    if not cached:
+        raise HTTPException(404, "This shared search has expired. Shared links last 7 days.")
+    return RecommendResponse.model_validate({**cached, "cached": True, "share_id": share_id})
+
+
 @app.post("/api/recommend")
 async def recommend(
     prefs: Preferences, request: Request, user_id: str | None = Depends(optional_user_id)
@@ -148,7 +157,7 @@ async def recommend(
 
     if cached := await cache_get(http, key):  # cache hits skip the limiter and OpenAI
         log.info("recommend cache hit user=%s", user_id)
-        done = RecommendResponse.model_validate({**cached, "cached": True})
+        done = RecommendResponse.model_validate({**cached, "cached": True, "share_id": key})
         body = [ndjson({"type": "meta", "relaxed": done.relaxed, "cached": True}), done_event(done)]
         return StreamingResponse(iter(body), media_type="application/x-ndjson", headers=headers)
 
@@ -216,9 +225,11 @@ async def recommend(
                 "AI ranking is unavailable right now, so these are data-based matches without price estimates."
             )
         out = RecommendResponse(results=final, relaxed=relaxed, notice=" ".join(notices) or None)
-        yield done_event(out)
-        if not failed:  # don't pin a degraded answer in the cache for 7 days
-            await cache_put(http, key, out.model_dump(exclude={"cached"}))
+        if failed:  # don't pin a degraded answer in the cache for 7 days, so there's nothing to share either
+            yield done_event(out)
+        else:
+            await cache_put(http, key, out.model_dump(exclude={"cached", "share_id"}))
+            yield done_event(out.model_copy(update={"share_id": key}))
         log.info(
             "recommend ip=%s user=%s candidates=%d picks=%d failed_batches=%d relaxed=%s %.1fs",
             ip,

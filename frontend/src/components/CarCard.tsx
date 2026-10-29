@@ -1,29 +1,18 @@
 import { CarFront, ExternalLink, Fuel, Gauge, Heart, Users, Cog } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAccount } from "@/hooks/account"
-import { getImage } from "@/lib/api"
+import { useCarImage } from "@/hooks/useCarImage"
+import { carName, efficiency, priceRange } from "@/lib/format"
+import { listingsUrl } from "@/lib/listings"
 import type { CarImage, CarResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
-
-// Outbound hook for future affiliate links: swap this for a partner URL builder.
-function listingsUrl(car: CarResult): string {
-  return `https://www.google.com/search?q=${encodeURIComponent(`${car.year} ${car.make} ${car.model} for sale`)}`
-}
-
-function efficiency(car: CarResult): string {
-  if (car.fuel_type === "Electric") return car.mpge ? `${car.mpge} MPGe` : "n/a"
-  if (car.fuel_type === "Plug-in Hybrid" && car.mpge) return `${car.mpg ?? "?"} MPG · ${car.mpge} MPGe`
-  return car.mpg ? `${car.mpg} MPG` : "n/a"
-}
-
-function CarPhoto({ car, image }: { car: CarResult; image: CarImage | null | undefined }) {
+export function CarPhoto({ car, image }: { car: CarResult; image: CarImage | null | undefined }) {
   const [failed, setFailed] = useState(false)
   const name = `${car.year} ${car.make} ${car.model}`
   if (image === undefined) return <Skeleton className="aspect-[16/10] rounded-none" />
@@ -68,21 +57,26 @@ function CarPhoto({ car, image }: { car: CarResult; image: CarImage | null | und
   )
 }
 
-export function CarCard({ car, showRank = true }: { car: CarResult; showRank?: boolean }) {
+export interface CompareControl {
+  selected: boolean
+  disabled: boolean
+  onToggle: () => void
+}
+
+export function CarCard({
+  car,
+  showRank = true,
+  compare,
+}: {
+  car: CarResult
+  showRank?: boolean
+  compare?: CompareControl
+}) {
   const { isFavorite, toggleFavorite } = useAccount()
   const fav = isFavorite(car.car_key)
   const [busy, setBusy] = useState(false)
-  const name = `${car.year} ${car.make} ${car.model}`
-  // undefined = still loading; saved favorites already carry their image
-  const [image, setImage] = useState<CarImage | null | undefined>(car.image ?? undefined)
-  useEffect(() => {
-    if (car.image) return
-    let live = true
-    getImage(car).then((img) => live && setImage(img))
-    return () => {
-      live = false
-    }
-  }, [car])
+  const name = carName(car)
+  const image = useCarImage(car)
 
   const specs = [
     { icon: CarFront, label: "Body", value: car.body_type },
@@ -142,11 +136,7 @@ export function CarCard({ car, showRank = true }: { car: CarResult; showRank?: b
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">AI estimate</span>
             {car.over_budget && <Badge variant="destructive">Above budget</Badge>}
           </div>
-          <p className="text-base font-semibold">
-            {car.price_min != null && car.price_max != null
-              ? `${usd.format(car.price_min)} – ${usd.format(car.price_max)}`
-              : "No price estimate"}
-          </p>
+          <p className="text-base font-semibold">{priceRange(car)}</p>
         </div>
 
         <ul className="grid gap-1.5 text-sm">
@@ -159,10 +149,28 @@ export function CarCard({ car, showRank = true }: { car: CarResult; showRank?: b
         </ul>
       </CardContent>
 
-      <CardFooter className="mt-auto pt-4 pb-4">
+      <CardFooter className="mt-auto flex-col items-stretch gap-3 pt-4 pb-4">
+        {compare && (
+          <label
+            className={cn(
+              "flex cursor-pointer items-center gap-2 text-sm select-none",
+              compare.disabled && "cursor-not-allowed opacity-50",
+            )}
+            title={compare.disabled ? "You can compare up to 3 cars" : undefined}
+          >
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={compare.selected}
+              disabled={compare.disabled}
+              onChange={compare.onToggle}
+            />
+            Compare
+          </label>
+        )}
         <Button asChild variant="outline" className="w-full">
           <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
-            See listings <ExternalLink className="size-4" aria-hidden />
+            See on Cars.com <ExternalLink className="size-4" aria-hidden />
             <span className="sr-only"> for {name} (opens in a new tab)</span>
           </a>
         </Button>

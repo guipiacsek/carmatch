@@ -72,6 +72,7 @@ export interface RecommendResponse {
   relaxed: string[]
   notice: string | null
   cached: boolean
+  share_id: string | null // opens these results at /r/<share_id> for 7 days
 }
 
 export type RecommendEvent =

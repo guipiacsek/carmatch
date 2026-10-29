@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react"
 import { Link, Navigate } from "react-router-dom"
 
 import { CarCard } from "@/components/CarCard"
+import { ResultList } from "@/components/ResultList"
+import { ShareButton } from "@/components/ShareButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -78,7 +80,10 @@ export default function Results() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Your top matches</h1>
           <p className="text-sm text-muted-foreground">Ranked from EPA vehicle data by AI. Prices are estimates.</p>
         </div>
-        {editLink}
+        <div className="flex flex-wrap gap-2">
+          {state.kind === "done" && state.data.share_id && <ShareButton shareId={state.data.share_id} />}
+          {editLink}
+        </div>
       </div>
 
       <div aria-live="polite" aria-busy={state.kind === "loading"}>
@@ -141,13 +146,7 @@ export default function Results() {
                 </CardContent>
               </Card>
             ) : (
-              <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {state.data.results.map((car) => (
-                  <li key={car.car_key} className="flex [&>*]:w-full">
-                    <CarCard car={car} />
-                  </li>
-                ))}
-              </ol>
+              <ResultList cars={state.data.results} />
             )}
           </div>
         )}
