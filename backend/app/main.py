@@ -273,18 +273,20 @@ async def recommend(
     key = cache_key(prefs)
 
     t0 = time.monotonic()
+    ip = client_ip(request)
+    # Both are Supabase round trips, so run them together. A memory-cache hit returns before the limiter task
+    # ever runs (cancelled below, nothing counted); a Supabase-cache hit may use up one search of the hour.
+    limit = asyncio.ensure_future(rate_limit_hit(http, f"recommend:{ip}"))
     cached = await cache_get(http, key)
-    t1 = time.monotonic()
-    headers["Server-Timing"] = f"cache;dur={(t1 - t0) * 1000:.0f}"  # visible in devtools, for latency debugging
-    if cached:  # cache hits skip the limiter and OpenAI
+    if cached:  # cache hits skip OpenAI
+        limit.cancel()
         log.info("recommend cache hit user=%s", user_id)
         done = RecommendResponse.model_validate({**cached, "cached": True, "share_id": key})
         body = [ndjson({"type": "meta", "relaxed": done.relaxed, "cached": True}), done_event(done)]
         return StreamingResponse(iter(body), media_type="application/x-ndjson", headers=headers)
 
-    ip = client_ip(request)
-    allowed, retry_after = await rate_limit_hit(http, f"recommend:{ip}")
-    headers["Server-Timing"] += f", limit;dur={(time.monotonic() - t1) * 1000:.0f}"
+    allowed, retry_after = await limit
+    t1 = time.monotonic()
     if not allowed:
         log.info("rate limited ip=%s", ip)
         raise HTTPException(
@@ -296,6 +298,8 @@ async def recommend(
     await ensure_catalog()
     cands, relaxed = build_candidates(catalog.vehicles, prefs, catalog.fuels_by_model)
     started = time.monotonic()
+    # Visible in devtools, for latency debugging.
+    headers["Server-Timing"] = f"lookups;dur={(t1 - t0) * 1000:.0f}, candidates;dur={(started - t1) * 1000:.0f}"
 
     async def run(batch: list[Candidate]) -> tuple[list[Candidate], list[LLMPick] | None]:
         try:
