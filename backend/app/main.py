@@ -272,7 +272,11 @@ async def recommend(
     headers = {"Cache-Control": "no-store", "X-Accel-Buffering": "no"}
     key = cache_key(prefs)
 
-    if cached := await cache_get(http, key):  # cache hits skip the limiter and OpenAI
+    t0 = time.monotonic()
+    cached = await cache_get(http, key)
+    t1 = time.monotonic()
+    headers["Server-Timing"] = f"cache;dur={(t1 - t0) * 1000:.0f}"  # visible in devtools, for latency debugging
+    if cached:  # cache hits skip the limiter and OpenAI
         log.info("recommend cache hit user=%s", user_id)
         done = RecommendResponse.model_validate({**cached, "cached": True, "share_id": key})
         body = [ndjson({"type": "meta", "relaxed": done.relaxed, "cached": True}), done_event(done)]
@@ -280,6 +284,7 @@ async def recommend(
 
     ip = client_ip(request)
     allowed, retry_after = await rate_limit_hit(http, f"recommend:{ip}")
+    headers["Server-Timing"] += f", limit;dur={(time.monotonic() - t1) * 1000:.0f}"
     if not allowed:
         log.info("rate limited ip=%s", ip)
         raise HTTPException(
