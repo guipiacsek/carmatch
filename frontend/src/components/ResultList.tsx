@@ -3,7 +3,6 @@ import { useRef, useState } from "react"
 
 import { CarCard, CarPhoto } from "@/components/CarCard"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useCarImage } from "@/hooks/useCarImage"
 import { carName, efficiency, priceRange } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
@@ -14,18 +13,15 @@ const MAX_COMPARE = 3
 
 const CARD_STEP = 310 // card width (290) + gap (20)
 
-/** Horizontal Color Arc carousel with "Compare" checkboxes, a floating control pill, and the compare dialog.
- *  `pending` adds skeleton cards while results are still streaming in. */
+/** Horizontal Color Arc carousel with "Compare" checkboxes, a floating control pill, and the compare dialog. */
 export function ResultList({
   cars,
   showRank = true,
   ordered = true,
-  pending = 0,
 }: {
   cars: CarResult[]
   showRank?: boolean
   ordered?: boolean
-  pending?: number
 }) {
   const [picked, setPicked] = useState<string[]>([])
   const [open, setOpen] = useState(false)
@@ -56,22 +52,6 @@ export function ResultList({
                 onToggle: () => toggle(car.car_key),
               }}
             />
-          </li>
-        ))}
-        {Array.from({ length: pending }, (_, i) => (
-          <li key={`pending-${i}`} aria-hidden className="w-[290px] shrink-0 snap-start">
-            <div className="h-[560px] overflow-hidden rounded-[26px] bg-card">
-              <Skeleton className="h-[300px] rounded-none rounded-br-[220px]" />
-              <div className="grid gap-3 p-5">
-                <Skeleton className="h-3 w-1/2" />
-                <div className="flex gap-2.5">
-                  {[0, 1, 2, 3].map((k) => (
-                    <Skeleton key={k} className="size-[46px] rounded-full" />
-                  ))}
-                </div>
-                <Skeleton className="h-24 w-full" />
-              </div>
-            </div>
           </li>
         ))}
       </List>

@@ -83,7 +83,7 @@ export async function recommend(
 
 // Render's free tier sleeps when idle: wake it on page load so it's up by the time the wizard is done.
 export function warmUp(): void {
-  fetch(`${API_URL}/health`).catch(() => {})
+  fetch(`${API_URL}/health?warm=1`).catch(() => {})
 }
 
 const images = new Map<string, Promise<CarImage | null>>()

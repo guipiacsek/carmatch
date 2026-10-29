@@ -17,7 +17,7 @@ from . import llm
 from .auth import optional_user_id
 from .candidates import TARGET_RESULTS, Candidate, build_candidates
 from .config import MAX_BODY_BYTES, USER_AGENT, settings
-from .images import find_image
+from .images import find_image, prefetch
 from .models import (
     MAX_YEAR,
     MIN_YEAR,
@@ -45,14 +45,58 @@ async def load_catalog_forever() -> None:
             await asyncio.sleep(30)
 
 
+WARM_EVERY = 45  # seconds; below the idle timeouts of the upstreams' connections
+WARM_FOR = 15 * 60  # keep connections open this long after a visitor shows up
+_last_visit = 0.0
+
+
+async def warm_connections(http: httpx.AsyncClient) -> None:
+    """Open (or keep open) the TLS connections a search needs. On Render's small CPU a fresh handshake to
+    Supabase and OpenAI cost ~2s per search; with HTTP/2 one warm connection serves all 3 parallel calls."""
+    calls: list[Awaitable[httpx.Response]] = []
+    if settings.openai_api_key:
+        auth = {"Authorization": f"Bearer {settings.openai_api_key}"}
+        calls.append(http.get(llm.OPENAI_MODELS_URL, headers=auth, timeout=10))
+    if settings.supabase_enabled:
+        calls.append(
+            http.get(
+                f"{settings.supabase_url}/rest/v1/recommendation_cache",
+                params={"select": "key", "limit": "0"},
+                headers=settings.supabase_headers(),
+                timeout=10,
+            )
+        )
+    for r in await asyncio.gather(*calls, return_exceptions=True):
+        if isinstance(r, Exception):
+            log.info("connection warm-up failed: %r", r)
+
+
+async def keep_warm(http: httpx.AsyncClient) -> None:
+    while True:
+        await asyncio.sleep(WARM_EVERY)
+        if time.monotonic() - _last_visit < WARM_FOR:
+            await warm_connections(http)
+
+
+def visited(http: httpx.AsyncClient, warm_now: bool = False) -> None:
+    global _last_visit
+    _last_visit = time.monotonic()
+    if warm_now:
+        asyncio.ensure_future(warm_connections(http))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    app.state.http = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
+    app.state.http = httpx.AsyncClient(
+        headers={"User-Agent": USER_AGENT}, http2=True, limits=httpx.Limits(keepalive_expiry=WARM_EVERY * 2)
+    )
     loader = asyncio.create_task(load_catalog_forever())
+    warmer = asyncio.create_task(keep_warm(app.state.http))
     if not settings.openai_api_key:
         log.warning("OPENAI_API_KEY not set: using data-only (mock) ranking")
     yield
     loader.cancel()
+    warmer.cancel()
     await app.state.http.aclose()
 
 
@@ -116,7 +160,9 @@ async def whoami(request: Request) -> dict[str, str]:
 
 
 @app.get("/health")
-async def health() -> dict[str, object]:
+async def health(request: Request, warm: bool = False) -> dict[str, object]:
+    if warm:  # the frontend's page-load ping (the uptime cron sends none): get connections ready for a search
+        visited(request.app.state.http, warm_now=True)
     return {"status": "ok", "catalog_loaded": bool(catalog.vehicles)}
 
 
@@ -222,6 +268,7 @@ async def recommend(
     """Streams NDJSON: {"type":"meta"}, then one {"type":"cars"} per finished batch, then {"type":"done"}
     with the final ordered RecommendResponse. Errors before streaming (422/429/503) are normal JSON."""
     http: httpx.AsyncClient = request.app.state.http
+    visited(http)
     headers = {"Cache-Control": "no-store", "X-Accel-Buffering": "no"}
     key = cache_key(prefs)
 
@@ -271,6 +318,8 @@ async def recommend(
                 cars = llm.validate_batch(prefs, batch, picks, used)
                 picked += len(cars)
                 results += cars
+                for c in cars:
+                    prefetch(http, c.year, c.make, c.model)
                 if cars:
                     yield ndjson({"type": "cars", "cars": [c.model_dump() for c in cars]})
         finally:
@@ -298,8 +347,8 @@ async def recommend(
         if failed:  # don't pin a degraded answer in the cache for 7 days, so there's nothing to share either
             yield done_event(out)
         else:
-            await cache_put(http, key, out.model_dump(exclude={"cached", "share_id"}))
-            yield done_event(out.model_copy(update={"share_id": key}))
+            yield done_event(out.model_copy(update={"share_id": key}))  # the client stops reading here...
+            await cache_put(http, key, out.model_dump(exclude={"cached", "share_id"}))  # ...so this costs it nothing
         log.info(
             "recommend ip=%s user=%s candidates=%d picks=%d failed_batches=%d relaxed=%s %.1fs",
             ip,

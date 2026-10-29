@@ -17,6 +17,7 @@ from .vehicles import typical_seats_for
 log = logging.getLogger(__name__)
 
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+OPENAI_MODELS_URL = "https://api.openai.com/v1/models"  # free; used to keep the connection warm
 MAX_BULLET_WORDS = 12
 BATCHES = 3  # parallel calls, each over its own slice of the candidates; results stream as each one lands
 BATCH_PICKS = 4  # asked of each call...

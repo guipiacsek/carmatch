@@ -3,11 +3,11 @@ import { useCallback, useEffect, useState } from "react"
 import { Link, Navigate } from "react-router-dom"
 
 import { Dashboard } from "@/components/Dashboard"
-import { ResultList } from "@/components/ResultList"
+import { LoadingScreen } from "@/components/LoadingScreen"
 import { ShareButton } from "@/components/ShareButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ApiError, recommend } from "@/lib/api"
+import { ApiError, getImage, recommend } from "@/lib/api"
 import { hasSavedPrefs, loadPrefs, prefChips } from "@/lib/preferences"
 import { KEYS, load, save } from "@/lib/storage"
 import type { CarResult, RecommendResponse } from "@/lib/types"
@@ -44,7 +44,11 @@ export default function Results() {
       return
     }
     setState({ kind: "loading", cars: [] })
-    recommend(prefs, (cars) => setState({ kind: "loading", cars }), signal).then(
+    const onCars = (cars: CarResult[]) => {
+      cars.forEach(getImage) // start photo downloads while the loading screen is still up
+      setState({ kind: "loading", cars })
+    }
+    recommend(prefs, onCars, signal).then(
       (data) => {
         save(KEYS.results, { prefs: key, data } satisfies Stored)
         setState({ kind: "done", data })
@@ -96,17 +100,7 @@ export default function Results() {
 
       <div aria-live="polite" aria-busy={state.kind === "loading"}>
         {state.kind === "loading" && (
-          <div className="grid gap-4">
-            <p className="text-sm text-muted-foreground">
-              {state.cars.length
-                ? `Found ${state.cars.length} so far, finding more…`
-                : "Finding cars that fit you. This takes a few seconds…"}
-            </p>
-            <ResultList
-              cars={state.cars.map((car, i) => ({ ...car, rank: i + 1 }))}
-              pending={Math.max(0, MAX_RESULTS - state.cars.length)}
-            />
-          </div>
+          <LoadingScreen found={Math.min(state.cars.length, MAX_RESULTS)} total={MAX_RESULTS} />
         )}
 
         {state.kind === "error" && (
