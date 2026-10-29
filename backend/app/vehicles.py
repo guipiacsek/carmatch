@@ -211,6 +211,7 @@ class Catalog:
     def __init__(self) -> None:
         self.vehicles: list[Vehicle] = []
         self.makes: list[str] = []
+        self.all_makes: set[str] = set()
         self.fuels_by_model: dict[tuple[str, str], set[str]] = {}
         self._ready = asyncio.Event()
 
@@ -221,7 +222,9 @@ class Catalog:
         vehicles = [
             v if canonical[v.make.lower()] == v.make else replace(v, make=canonical[v.make.lower()]) for v in vehicles
         ]
-        self.vehicles = [v for v in vehicles if v.make in BRANDS]
+        self.all_makes = {v.make for v in vehicles}  # saved favorites may predate the brand cut
+        offered = {b.lower() for b in BRANDS}  # case-insensitive: the canonical spelling depends on the data
+        self.vehicles = [v for v in vehicles if v.make.lower() in offered]
         self.makes = sorted({v.make for v in self.vehicles}, key=str.lower)
         self.fuels_by_model = {}
         for v in self.vehicles:

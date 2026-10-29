@@ -1,10 +1,10 @@
 import { Heart, LogIn, LogOut, Moon, Search, Sun, Trophy } from "lucide-react"
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 
 import { useAccount } from "@/hooks/account"
 import { KEYS, save } from "@/lib/storage"
-import { isDark, setDark } from "@/lib/theme"
+import { isDark, onSystemChange, setDark } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
 const restart = () => [KEYS.prefs, KEYS.step, KEYS.results].forEach((k) => save(k, null))
@@ -55,6 +55,7 @@ function Nav({ dark, onTheme }: { dark: boolean; onTheme: () => void }) {
 
 export function Layout() {
   const [dark, setDarkState] = useState(isDark)
+  useEffect(() => onSystemChange(() => setDarkState(isDark())), []) // keep the icon right when the OS theme flips
   const toggleTheme = () => {
     setDark(!dark)
     setDarkState(!dark)

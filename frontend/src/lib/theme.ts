@@ -25,5 +25,8 @@ export function setDark(dark: boolean): void {
   document.documentElement.classList.toggle("dark", dark)
 }
 
-/** Follow OS theme changes while the visitor hasn't picked one. */
-export const followSystem = () => systemDark.addEventListener("change", applyTheme)
+/** Calls `cb` when the OS theme changes (it matters only while the visitor hasn't picked one). Returns unsubscribe. */
+export function onSystemChange(cb: () => void): () => void {
+  systemDark.addEventListener("change", cb)
+  return () => systemDark.removeEventListener("change", cb)
+}

@@ -13,7 +13,7 @@ export function LoadingScreen({ found, total }: { found: number; total: number }
   }, [])
 
   const steps = [
-    { label: "Filtering 39,000+ EPA vehicles", done: secs >= 1 || found > 0 },
+    { label: "Filtering 35,000+ EPA vehicles", done: secs >= 1 || found > 0 },
     { label: "AI is ranking your best fits", done: found > 0 },
     { label: "Estimating prices and writing reasons", done: found >= total * 0.6 },
     { label: "Lining up photos", done: found >= total },

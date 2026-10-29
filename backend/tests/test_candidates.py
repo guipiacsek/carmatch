@@ -104,9 +104,10 @@ def test_used_skips_newest_year_and_spreads_two_years() -> None:
 
 def test_catalog_keeps_only_offered_brands() -> None:
     c = Catalog()
-    c.load([*fleet(), veh(999, 2020, "Yugo", "GV")])
+    c.load([*fleet(), veh(999, 2020, "Yugo", "GV"), veh(998, 2020, "Mini", "Cooper")])
     assert "Yugo" not in c.makes and all(v.make != "Yugo" for v in c.vehicles)
-    assert "Toyota" in c.makes
+    assert "Yugo" in c.all_makes  # still known, for photos of old favorites
+    assert "Toyota" in c.makes and "Mini" in c.makes  # BRANDS says "MINI"; the data's spelling wins
 
 
 def test_base_model_keeps_distinct_variants() -> None:

@@ -197,7 +197,7 @@ async def image(
 ) -> CarImage | None:
     """Photo + attribution for one result card. Separate from /api/recommend so results show without waiting."""
     await ensure_catalog()
-    if make not in catalog.makes:
+    if make not in catalog.all_makes:  # any EPA make: favorites saved before the brand cut still get photos
         raise HTTPException(404, "Unknown make")
     response.headers["Cache-Control"] = "public, max-age=604800"
     return await find_image(request.app.state.http, year, make, model)

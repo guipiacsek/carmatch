@@ -4,5 +4,62 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/best/used-suvs-under-25000",
+      "destination": "/best/used-suvs-under-30000",
+      "permanent": true
+    },
+    {
+      "source": "/best/used-sedans-under-20000",
+      "destination": "/best/new-sedans-under-30000",
+      "permanent": true
+    },
+    {
+      "source": "/best/used-trucks-under-35000",
+      "destination": "/best/new-trucks-under-50000",
+      "permanent": true
+    },
+    {
+      "source": "/best/used-hybrids-under-25000",
+      "destination": "/best/hybrids-under-35000",
+      "permanent": true
+    },
+    {
+      "source": "/best/3-row-suvs-under-45000",
+      "destination": "/best/3-row-suvs-under-50000",
+      "permanent": true
+    },
+    {
+      "source": "/best/minivans",
+      "destination": "/best/3-row-suvs-under-50000",
+      "permanent": true
+    },
+    {
+      "source": "/best/first-cars-under-15000",
+      "destination": "/best/first-cars-under-20000",
+      "permanent": true
+    },
+    {
+      "source": "/best/awd-suvs-under-30000",
+      "destination": "/best/used-suvs-under-30000",
+      "permanent": true
+    },
+    {
+      "source": "/best/sports-cars-under-40000",
+      "destination": "/best/sports-cars-under-50000",
+      "permanent": true
+    },
+    {
+      "source": "/best/luxury-suvs-under-60000",
+      "destination": "/best/luxury-suvs-under-70000",
+      "permanent": true
+    }
+  ]
 }
