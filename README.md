@@ -91,7 +91,7 @@ delete from favorites where car_key like 'test-%';
 3. The build step downloads the EPA dataset, so the first request doesn't wait for it. Note that the free plan sleeps when idle.
 4. Check that `https://<service>.onrender.com/health` returns `{"status":"ok","catalog_loaded":true}`.
 
-The rate limiter reads the client IP from `X-Forwarded-For`, counting `TRUSTED_PROXY_HOPS` entries from the right (default 1, Render's proxy). Entries further left are client-controlled, so they are ignored. After the first deploy, check one `recommend ip=…` log line and confirm it shows your public IP. If it shows a proxy address instead, set `TRUSTED_PROXY_HOPS=2`.
+The rate limiter reads the client IP from `X-Forwarded-For`: private `10.x` hops (Render's load balancers) are dropped, then it takes the `TRUSTED_PROXY_HOPS`-th entry from the right (2 on Render: your IP, then Cloudflare's). Entries further left are client-controlled and ignored. `GET /api/client-ip` shows the address you're counted under.
 
 ### Frontend on Vercel
 

@@ -68,7 +68,7 @@ def test_recommend_streams_meta_cars_then_done(client: TestClient) -> None:
 
 
 def test_rate_limit_429_and_cache_hits_are_free(client: TestClient) -> None:
-    headers = {"X-Forwarded-For": "6.6.6.6, 9.9.9.9"}  # rightmost entry is the one our proxy saw
+    headers = {"X-Forwarded-For": "6.6.6.6, 104.22.14.138, 10.199.1.1"}  # client, Cloudflare, Render LB
     for budget in (20000, 21000, 22000):  # limit is 3/hour in tests
         assert client.post("/api/recommend", json={**BODY, "budget": budget}, headers=headers).status_code == 200
     r = client.post("/api/recommend", json={**BODY, "budget": 23000}, headers=headers)
@@ -78,9 +78,9 @@ def test_rate_limit_429_and_cache_hits_are_free(client: TestClient) -> None:
     r = client.post("/api/recommend", json={**BODY, "budget": 20000}, headers=headers)
     assert r.status_code == 200 and done(r)["cached"] is True
     # Spoofing the left part of X-Forwarded-For doesn't reset the limit.
-    spoofed = {"X-Forwarded-For": "1.1.1.1, 9.9.9.9"}
+    spoofed = {"X-Forwarded-For": "1.1.1.1, 6.6.6.6, 104.22.14.138, 10.199.1.1"}
     assert client.post("/api/recommend", json={**BODY, "budget": 24000}, headers=spoofed).status_code == 429
-    other = {"X-Forwarded-For": "8.8.4.4"}
+    other = {"X-Forwarded-For": "8.8.4.4, 104.22.14.138, 10.199.1.1"}
     assert client.post("/api/recommend", json={**BODY, "budget": 24000}, headers=other).status_code == 200
 
 
@@ -148,5 +148,7 @@ def test_parallel_batches_stream_and_survive_one_failure(client: TestClient, mon
 
 
 def test_client_ip_skips_render_internal_hops(client: TestClient) -> None:
-    ip = client.get("/api/client-ip", headers={"X-Forwarded-For": "1.1.1.1, 8.8.8.8, 10.199.143.70"}).json()
-    assert ip["ip"] == "8.8.8.8"  # 10.x is Render's LB; 1.1.1.1 is client-supplied and ignored
+    ip = client.get(
+        "/api/client-ip", headers={"X-Forwarded-For": "1.1.1.1, 8.8.8.8, 104.22.14.138, 10.199.143.70"}
+    ).json()
+    assert ip["ip"] == "8.8.8.8"  # 10.x = Render LB, 104.x = Cloudflare, 1.1.1.1 = client-supplied (ignored)

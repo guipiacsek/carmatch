@@ -2,7 +2,7 @@ import os
 
 # Settings are read at import time: force an offline, deterministic config before the app is imported.
 os.environ.update(
-    OPENAI_API_KEY="", SUPABASE_URL="", SUPABASE_SERVICE_ROLE_KEY="", RATE_LIMIT_PER_HOUR="3", TRUSTED_PROXY_HOPS="1"
+    OPENAI_API_KEY="", SUPABASE_URL="", SUPABASE_SERVICE_ROLE_KEY="", RATE_LIMIT_PER_HOUR="3", TRUSTED_PROXY_HOPS="2"
 )
 
 from app.models import Preferences  # noqa: E402

@@ -17,8 +17,8 @@ class Settings:
     # Optional regex, e.g. Vercel preview URLs: ^https://carmatch-.*\.vercel\.app$
     allowed_origin_regex: str | None = field(default_factory=lambda: os.getenv("ALLOWED_ORIGIN_REGEX") or None)
     rate_limit_per_hour: int = field(default_factory=lambda: int(os.getenv("RATE_LIMIT_PER_HOUR", "8")))
-    # How many proxies append to X-Forwarded-For in front of the app; the client IP is the Nth entry from the right.
-    trusted_proxy_hops: int = field(default_factory=lambda: int(os.getenv("TRUSTED_PROXY_HOPS", "1")))
+    # Public proxies appending to X-Forwarded-For after private hops are dropped. Render: Cloudflare + client = 2.
+    trusted_proxy_hops: int = field(default_factory=lambda: int(os.getenv("TRUSTED_PROXY_HOPS", "2")))
     data_dir: str = field(
         default_factory=lambda: os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "data"))
     )

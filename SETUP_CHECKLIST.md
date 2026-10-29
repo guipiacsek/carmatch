@@ -62,10 +62,10 @@ Everything below needs an account, a secret, or a dashboard click. Work top to b
    | `ALLOWED_ORIGINS` | `https://mycarmatch.vercel.app` |
    | `ALLOWED_ORIGIN_REGEX` | optional, for Vercel preview deploys: `^https://carmatch-[a-z0-9]+-guilherme-ps-projects\.vercel\.app$` |
 
-   `OPENAI_MODEL=gpt-4.1-mini`, `RATE_LIMIT_PER_HOUR=8` and `TRUSTED_PROXY_HOPS=1` are pre-filled.
+   `OPENAI_MODEL=gpt-4.1-mini`, `RATE_LIMIT_PER_HOUR=8` and `TRUSTED_PROXY_HOPS=2` are pre-filled.
 3. **Apply**, then wait for the build (about 2 to 4 min; it installs the Python packages and downloads the EPA dataset).
 4. Open `https://<your-service>.onrender.com/health`. Expect `{"status":"ok","catalog_loaded":true}`. Note this URL: it is **VITE_API_URL**.
-5. After your first search (step 5), open **Logs** and find the line `recommend ip=<x.x.x.x> …`. It should show *your* public IP (compare with https://ifconfig.me). If it shows a Render or Cloudflare address, set `TRUSTED_PROXY_HOPS=2` and redeploy.
+5. Open `https://<your-service>.onrender.com/api/client-ip`. `ip` should be your public IP (compare with https://ifconfig.me), not a Cloudflare `104.x`/`172.x` address.
 
 ## 4. Vercel frontend (3 min)
 
