@@ -1,15 +1,16 @@
-import { Heart, LogIn, LogOut, Search } from "lucide-react"
-import type { ReactNode } from "react"
+import { Heart, LogIn, LogOut, Moon, Search, Sun } from "lucide-react"
+import { useState, type ReactNode } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 
 import { useAccount } from "@/hooks/account"
 import { KEYS, save } from "@/lib/storage"
+import { isDark, setDark } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
 const restart = () => [KEYS.prefs, KEYS.step, KEYS.results].forEach((k) => save(k, null))
 const iconBtn = "grid size-10 place-items-center rounded-xl text-muted-foreground transition hover:text-foreground"
 
-function Nav() {
+function Nav({ dark, onTheme }: { dark: boolean; onTheme: () => void }) {
   const { enabled, user, openAuth, signOut } = useAccount()
   const link = (to: string, label: string, icon: ReactNode, onClick?: () => void) => (
     <NavLink
@@ -38,11 +39,25 @@ function Nav() {
           {user ? <LogOut className="size-5" aria-hidden /> : <LogIn className="size-5" aria-hidden />}
         </button>
       )}
+      <button
+        type="button"
+        className={iconBtn}
+        onClick={onTheme}
+        aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+        title={dark ? "Light mode" : "Dark mode"}
+      >
+        {dark ? <Sun className="size-5" aria-hidden /> : <Moon className="size-5" aria-hidden />}
+      </button>
     </>
   )
 }
 
 export function Layout() {
+  const [dark, setDarkState] = useState(isDark)
+  const toggleTheme = () => {
+    setDark(!dark)
+    setDarkState(!dark)
+  }
   return (
     <div className="min-h-svh bg-background text-foreground md:grid md:grid-cols-[72px_1fr]">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50">
@@ -56,7 +71,7 @@ export function Layout() {
           <span className="sr-only">CarMatch</span>
         </Link>
         <nav aria-label="Main" className="grid gap-5">
-          <Nav />
+          <Nav dark={dark} onTheme={toggleTheme} />
         </nav>
         <span className="text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase [writing-mode:vertical-rl]">
           CarMatch
@@ -67,7 +82,7 @@ export function Layout() {
           Car<span className="text-primary">Match</span>
         </Link>
         <nav aria-label="Main" className="flex gap-1">
-          <Nav />
+          <Nav dark={dark} onTheme={toggleTheme} />
         </nav>
       </header>
 
