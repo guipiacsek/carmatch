@@ -10,6 +10,7 @@ import Wizard from "@/pages/Wizard"
 const Results = lazy(() => import("@/pages/Results"))
 const Favorites = lazy(() => import("@/pages/Favorites"))
 const Shared = lazy(() => import("@/pages/Shared"))
+const Rankings = lazy(() => import("@/pages/Rankings"))
 
 // Keyed by navigation so clicking the logo while already on the wizard remounts it with fresh answers.
 function WizardPage() {
@@ -25,6 +26,7 @@ export default function App() {
             <Route index element={<WizardPage />} />
             <Route path="results" element={<Suspense fallback={null}><Results /></Suspense>} />
             <Route path="favorites" element={<Suspense fallback={null}><Favorites /></Suspense>} />
+            <Route path="rankings/:slug?" element={<Suspense fallback={null}><Rankings /></Suspense>} />
             <Route path="r/:shareId" element={<Suspense fallback={null}><Shared /></Suspense>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

@@ -1,4 +1,4 @@
-import { Heart, LogIn, LogOut, Moon, Search, Sun } from "lucide-react"
+import { Heart, LogIn, LogOut, Moon, Search, Sun, Trophy } from "lucide-react"
 import { useState, type ReactNode } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 
@@ -12,10 +12,10 @@ const iconBtn = "grid size-10 place-items-center rounded-xl text-muted-foregroun
 
 function Nav({ dark, onTheme }: { dark: boolean; onTheme: () => void }) {
   const { enabled, user, openAuth, signOut } = useAccount()
-  const link = (to: string, label: string, icon: ReactNode, onClick?: () => void) => (
+  const link = (to: string, label: string, icon: ReactNode, onClick?: () => void, end = true) => (
     <NavLink
       to={to}
-      end
+      end={end}
       onClick={onClick}
       aria-label={label}
       title={label}
@@ -27,6 +27,7 @@ function Nav({ dark, onTheme }: { dark: boolean; onTheme: () => void }) {
   return (
     <>
       {link("/", "New search", <Search className="size-5" aria-hidden />, restart)}
+      {link("/rankings", "Rankings", <Trophy className="size-5" aria-hidden />, undefined, false)}
       {enabled && link("/favorites", "My favorites", <Heart className="size-5" aria-hidden />)}
       {enabled && (
         <button

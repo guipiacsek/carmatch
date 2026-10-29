@@ -162,6 +162,16 @@ def _int(v: str) -> int | None:
     return n or None
 
 
+def base_model(model: str, epa_base: str) -> str:
+    """EPA's baseModel, unless the model's first word extends it: EPA files the 500X crossover under "500"."""
+    base = (epa_base or model).strip()
+    first = model.split()[0] if model.strip() else base
+    extra = first[len(base) :] if first.startswith(base) else ""
+    # Not trims or body styles of the same car: "G37x" (AWD), "i3s", "Cayenne/Coupe", "CTS-V".
+    distinct = extra[:1].isalnum() and not (len(extra) == 1 and extra.islower())
+    return first if distinct else base
+
+
 def parse_rows(rows: "csv.DictReader[str]") -> list[Vehicle]:
     out: list[Vehicle] = []
     for r in rows:
@@ -182,7 +192,7 @@ def parse_rows(rows: "csv.DictReader[str]") -> list[Vehicle]:
                 year=year,
                 make=r["make"].strip(),
                 model=r["model"].strip(),
-                base_model=(r["baseModel"] or r["model"]).strip(),
+                base_model=base_model(r["model"], r["baseModel"]),
                 vclass=r["VClass"],
                 body_types=bodies,
                 fuel=fuel,

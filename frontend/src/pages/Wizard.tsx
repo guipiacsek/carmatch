@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowRight, Search } from "lucide-react"
+import { ArrowLeft, ArrowRight, Search, Trophy } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 
 import { MultiChoice, SingleChoice } from "@/components/ChoiceGroup"
 import { Button } from "@/components/ui/button"
@@ -278,6 +278,21 @@ export default function Wizard() {
 
   return (
     <div className="mx-auto max-w-2xl">
+      {step === 0 && (
+        <Link
+          to="/rankings"
+          className="relative mb-6 flex items-center gap-3 overflow-hidden rounded-[22px] bg-card p-4 pl-5 transition hover:shadow-[0_12px_30px_#0000001a]"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Trophy className="size-5" aria-hidden />
+          </span>
+          <span className="grid">
+            <span className="text-sm font-bold">Just browsing? See the Top 10 rankings</span>
+            <span className="text-xs font-light text-muted-foreground">SUVs, EVs, trucks, first cars and more</span>
+          </span>
+          <ArrowRight className="ml-auto size-4 text-muted-foreground" aria-hidden />
+        </Link>
+      )}
       <div className="mb-6 grid gap-2">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>

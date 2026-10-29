@@ -75,6 +75,20 @@ export interface RecommendResponse {
   share_id: string | null // opens these results at /r/<share_id> for 7 days
 }
 
+/** public/rankings.json, written by backend/app/seo.py */
+export interface Ranking {
+  slug: string
+  title: string
+  intro: string
+  prefs: Preferences
+  cars: CarResult[] // photos included
+}
+
+export interface RankingsData {
+  updated: string // ISO date
+  lists: Ranking[]
+}
+
 export type RecommendEvent =
   | { type: "meta"; relaxed: string[]; cached: boolean }
   | { type: "cars"; cars: CarResult[] }

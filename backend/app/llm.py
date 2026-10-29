@@ -66,12 +66,13 @@ def strict_schema(ids: list[str], n: int) -> dict[str, Any]:
     return schema
 
 
-def build_messages(p: Preferences, cands: list[Candidate], n: int) -> list[dict[str, str]]:
+def build_messages(p: Preferences, cands: list[Candidate], n: int, hide_budget: bool = False) -> list[dict[str, str]]:
     data = {
         "today": date.today().isoformat(),
         "picks_requested": n,
         # min_seats is enforced in code; showing it to the model made it inflate seat counts to comply.
-        "preferences": p.model_dump(exclude={"min_seats"}),
+        # hide_budget: the same effect on prices (estimates bent to fit); callers then cut over-budget cars.
+        "preferences": p.model_dump(exclude={"min_seats", "budget"} if hide_budget else {"min_seats"}),
         "candidates": [
             {
                 "id": c.id,
@@ -105,12 +106,14 @@ def split_batches(cands: list[Candidate], k: int = BATCHES) -> list[list[Candida
     return [b for b in batches if b]
 
 
-async def rank_with_llm(client: httpx.AsyncClient, p: Preferences, cands: list[Candidate]) -> list[LLMPick]:
+async def rank_with_llm(
+    client: httpx.AsyncClient, p: Preferences, cands: list[Candidate], hide_budget: bool = False
+) -> list[LLMPick]:
     n = min(BATCH_PICKS, len(cands))
     body = {
         "model": settings.openai_model,
         "temperature": 0.2,
-        "messages": build_messages(p, cands, n),
+        "messages": build_messages(p, cands, n, hide_budget),
         "response_format": {
             "type": "json_schema",
             "json_schema": {"name": "car_picks", "strict": True, "schema": strict_schema([c.id for c in cands], n)},
@@ -218,9 +221,9 @@ def backfill(p: Preferences, cands: list[Candidate], used: set[tuple[str, str]],
     return out
 
 
-def finalize(results: list[CarResult]) -> list[CarResult]:
+def finalize(results: list[CarResult], limit: int = TARGET_RESULTS) -> list[CarResult]:
     """Final order: within budget first, then by match score (the frontend sorts streamed cars the same way)."""
-    ordered = sorted(results, key=lambda r: (r.over_budget, -r.match_score))[:TARGET_RESULTS]
+    ordered = sorted(results, key=lambda r: (r.over_budget, -r.match_score))[:limit]
     return [r.model_copy(update={"rank": i + 1}) for i, r in enumerate(ordered)]
 
 

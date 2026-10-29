@@ -1,7 +1,8 @@
-"""Static SEO guide pages ("Best used SUVs under $25,000") built from real CarMatch searches.
+"""Top 10 rankings ("Top 10 new SUVs under $40,000") built from real CarMatch searches.
 
 Run from backend/ with OPENAI_API_KEY set:  python -m app.seo
-Writes frontend/public/best/*.html, frontend/public/sitemap.xml. Re-run monthly so prices and years stay current.
+Writes frontend/public/rankings.json (the app's Rankings page) and the same lists as static SEO pages
+(frontend/public/best/*.html, sitemap.xml). Re-run monthly so prices and years stay current.
 """
 
 import asyncio
@@ -16,7 +17,7 @@ from urllib.parse import quote, urlencode
 import httpx
 
 from . import llm
-from .candidates import TARGET_RESULTS, build_candidates
+from .candidates import build_candidates
 from .config import USER_AGENT
 from .images import find_image
 from .models import MAX_YEAR, CarImage, CarResult, Preferences
@@ -24,69 +25,71 @@ from .vehicles import catalog, load_catalog
 
 SITE = "https://mycarmatch.vercel.app"
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public")
-USED = {"condition": "used", "year_min": MAX_YEAR - 11, "year_max": MAX_YEAR - 1}
+# 5-10 years old, so honest used prices fit the budgets
+USED = {"condition": "used", "year_min": MAX_YEAR - 11, "year_max": MAX_YEAR - 6}
 NEW = {"condition": "new", "year_min": MAX_YEAR - 1, "year_max": MAX_YEAR}
 
-# slug, H1, intro, preferences (anything left out takes the Preferences default)
+RANK_SIZE = 10  # "Top 10" lists; the app's searches show 9
+
+# slug, title, intro, preferences (anything left out takes the Preferences default)
 GUIDES: list[tuple[str, str, str, dict[str, object]]] = [
-    ("used-suvs-under-25000", "Best used SUVs under $25,000",
-     "Room for passengers and cargo without a new-car price: the used SUVs that give the most for $25k.",
-     {**USED, "body_types": ["SUV"], "budget": 25_000, "priorities": ["reliability", "family"]}),
-    ("used-sedans-under-20000", "Best used sedans under $20,000",
-     "Comfortable, efficient and cheap to run: the used sedans worth shortlisting for under $20k.",
-     {**USED, "body_types": ["Sedan"], "budget": 20_000, "priorities": ["reliability", "fuel_economy"]}),
-    ("used-trucks-under-35000", "Best used pickup trucks under $35,000",
-     "Pickups that tow, haul and hold their value, at used prices under $35k.",
-     {**USED, "body_types": ["Truck"], "budget": 35_000, "priorities": ["towing", "reliability"]}),
-    ("new-suvs-under-40000", "Best new SUVs under $40,000",
+    ("new-suvs-under-40000", "Top 10 new SUVs under $40,000",
      "The new SUVs that balance space, tech and price at or under $40k MSRP.",
      {**NEW, "body_types": ["SUV"], "budget": 40_000, "priorities": ["family", "reliability"]}),
-    ("electric-cars-under-50000", "Best electric cars under $50,000",
-     "EVs with real-world range and fast charging for under $50k, new or nearly new.",
-     {"condition": "either", "year_min": MAX_YEAR - 4, "year_max": MAX_YEAR, "fuel_types": ["Electric"],
-      "budget": 50_000, "priorities": ["commuting"]}),
-    ("used-hybrids-under-25000", "Best used hybrids under $25,000",
-     "High-MPG hybrids that cut fuel bills, for under $25k used.",
-     {**USED, "fuel_types": ["Hybrid"], "budget": 25_000, "priorities": ["fuel_economy", "reliability"]}),
-    ("3-row-suvs-under-45000", "Best 3-row SUVs under $45,000",
-     "Seven seats or more for growing families, without going over $45k.",
-     {"condition": "either", "year_min": MAX_YEAR - 6, "year_max": MAX_YEAR, "body_types": ["SUV"],
-      "budget": 45_000, "min_seats": 7, "priorities": ["family"]}),
-    ("minivans", "Best minivans for families",
-     "Sliding doors, three rows and endless cargo space: the minivans families pick.",
-     {"condition": "either", "year_min": MAX_YEAR - 6, "year_max": MAX_YEAR, "body_types": ["Minivan"],
-      "budget": 50_000, "priorities": ["family", "reliability"]}),
-    ("first-cars-under-15000", "Best first cars under $15,000",
-     "Safe, reliable and cheap to insure: used cars for new drivers under $15k.",
-     {**USED, "body_types": ["Sedan", "Hatchback", "Compact"], "budget": 15_000,
+    ("used-suvs-under-30000", "Top 10 used SUVs under $30,000",
+     "Room for passengers and cargo without a new-car price: the used SUVs that give the most for $30k.",
+     {**USED, "body_types": ["SUV"], "budget": 30_000, "priorities": ["reliability", "family"]}),
+    ("new-sedans-under-30000", "Top 10 new sedans under $30,000",
+     "Comfortable, efficient and affordable: the new sedans worth shortlisting for under $30k.",
+     {**NEW, "body_types": ["Sedan"], "budget": 30_000, "priorities": ["reliability", "fuel_economy"]}),
+    ("new-trucks-under-50000", "Top 10 new pickup trucks under $50,000",
+     "Pickups that tow, haul and hold their value, for under $50k new.",
+     {**NEW, "body_types": ["Truck"], "budget": 50_000, "priorities": ["towing", "reliability"]}),
+    ("electric-cars-under-50000", "Top 10 electric cars under $50,000",
+     "New EVs with real-world range and fast charging for under $50k.",
+     {**NEW, "fuel_types": ["Electric"], "budget": 50_000, "priorities": ["commuting"]}),
+    ("hybrids-under-35000", "Top 10 new hybrids under $35,000",
+     "High-MPG hybrids that cut fuel bills, for under $35k new.",
+     {**NEW, "fuel_types": ["Hybrid"], "budget": 35_000, "priorities": ["fuel_economy", "reliability"]}),
+    ("3-row-suvs-under-50000", "Top 10 3-row family SUVs under $50,000",
+     "Seven seats or more for growing families, new and under $50k.",
+     {**NEW, "body_types": ["SUV"], "budget": 50_000, "min_seats": 7, "priorities": ["family"]}),
+    ("first-cars-under-20000", "Top 10 used first cars under $20,000",
+     "Safe, reliable and cheap to insure: used cars for new drivers under $20k.",
+     {**USED, "body_types": ["Sedan", "Hatchback", "Compact"], "budget": 20_000,
       "priorities": ["reliability", "fuel_economy"]}),
-    ("awd-suvs-under-30000", "Best AWD SUVs under $30,000",
-     "All-wheel-drive SUVs for snow and rough roads, for under $30k used.",
-     {**USED, "body_types": ["SUV"], "drivetrain": "AWD", "budget": 30_000, "priorities": ["reliability"]}),
-    ("sports-cars-under-40000", "Best sports cars under $40,000",
-     "Coupes and convertibles that are fun to drive, for under $40k.",
-     {"condition": "either", "year_min": MAX_YEAR - 8, "year_max": MAX_YEAR, "body_types": ["Coupe", "Convertible"],
-      "budget": 40_000, "priorities": ["performance"]}),
-    ("luxury-suvs-under-60000", "Best luxury SUVs under $60,000",
-     "Premium cabins and badges for under $60k, new or lightly used.",
-     {"condition": "either", "year_min": MAX_YEAR - 4, "year_max": MAX_YEAR, "body_types": ["SUV"],
-      "budget": 60_000, "priorities": ["luxury"]}),
+    ("sports-cars-under-50000", "Top 10 sports cars under $50,000",
+     "Coupes and convertibles that are fun to drive, new or nearly new, for under $50k.",
+     {"condition": "either", "year_min": MAX_YEAR - 5, "year_max": MAX_YEAR, "body_types": ["Coupe", "Convertible"],
+      "budget": 50_000, "priorities": ["performance"]}),
+    ("luxury-suvs-under-70000", "Top 10 new luxury SUVs under $70,000",
+     "Premium cabins and badges, new and under $70k.",
+     {**NEW, "body_types": ["SUV"], "budget": 70_000, "priorities": ["luxury"]}),
 ]  # fmt: skip
 
 
 async def search(client: httpx.AsyncClient, p: Preferences) -> list[CarResult]:
-    """The /api/recommend pipeline without streaming, caching or rate limiting."""
+    """The /api/recommend pipeline without streaming, caching or rate limiting, sized for a top 10.
+    Only priced, within-budget cars: a list titled "under $X" can't include cars the app flags as over budget,
+    and data-only fallbacks (no price) don't belong in a ranking."""
     cands, _ = build_candidates(catalog.vehicles, p, catalog.fuels_by_model)
-    batches = llm.split_batches(cands)
     used: set[tuple[str, str]] = set()
     results: list[CarResult] = []
-    picks_per_batch = await asyncio.gather(*(llm.rank_with_llm(client, p, b) for b in batches), return_exceptions=True)
-    for batch, picks in zip(batches, picks_per_batch, strict=True):
-        if isinstance(picks, BaseException):
-            raise RuntimeError(f"OpenAI call failed, not publishing a degraded page: {picks!r}")
-        results += llm.validate_batch(p, batch, picks, used)
-    results += llm.backfill(p, cands, used, TARGET_RESULTS - len(results))
-    return llm.finalize(results)
+    pool = cands
+    for _ in range(3):  # more rounds over models not tried yet while the budget cut leaves fewer than 10
+        batches = llm.split_batches(pool, k=4)
+        picks_per_batch = await asyncio.gather(
+            *(llm.rank_with_llm(client, p, b, hide_budget=True) for b in batches), return_exceptions=True
+        )
+        for batch, picks in zip(batches, picks_per_batch, strict=True):
+            if isinstance(picks, BaseException):
+                raise RuntimeError(f"OpenAI call failed, not publishing a degraded page: {picks!r}")
+            kept = llm.validate_batch(p, batch, picks, used, keep=llm.BATCH_PICKS)
+            results += [r for r in kept if not r.over_budget and r.price_min is not None]
+        pool = [c for c in cands if (c.make, c.model) not in used]
+        if len(results) >= RANK_SIZE or not pool:
+            break
+    return llm.finalize(results, RANK_SIZE)
 
 
 def usd(n: int | None) -> str:
@@ -195,10 +198,10 @@ def index_page() -> str:
         f'<div class="body"><p>{escape(intro)}</p></div></a></li>'
         for i, (s, t, intro, _) in enumerate(GUIDES)
     )
-    body = f"""<main><h1>Car buying guides</h1><p class="lede">Ranked shortlists for common budgets and needs, \
+    body = f"""<main><h1>Top 10 car rankings</h1><p class="lede">Ranked shortlists for common budgets and needs, \
 built from EPA vehicle data and AI price estimates.</p><ol class="cars">{links}</ol></main>"""
     ld = {"@context": "https://schema.org", "@type": "CollectionPage", "name": "CarMatch car buying guides"}
-    return page("Car buying guides", "Ranked car shortlists for common budgets and needs.", "/best", body, ld)
+    return page("Top 10 car rankings", "Top 10 car shortlists for common budgets and needs.", "/best", body, ld)
 
 
 def sitemap() -> str:
@@ -210,26 +213,32 @@ def sitemap() -> str:
 
 async def main() -> None:
     await load_catalog()
-    os.makedirs(os.path.join(OUT, "best"), exist_ok=True)
+    best = os.path.join(OUT, "best")
+    os.makedirs(best, exist_ok=True)
+    for old in os.listdir(best):  # categories change; don't leave orphaned pages behind
+        os.remove(os.path.join(best, old))
+    lists = []
     async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
-        for slug, h1, intro, raw in GUIDES:
+        for slug, title, intro, raw in GUIDES:
             p = Preferences.model_validate(raw)
-            # A page titled "under $X" can't list cars the app flags as over budget (the app shows them last).
-            cars = [
-                c.model_copy(update={"rank": i + 1})
-                for i, c in enumerate(r for r in await search(client, p) if not r.over_budget)
-            ]
+            cars = await search(client, p)
             imgs = await asyncio.gather(*(find_image(client, c.year, c.make, c.model) for c in cars))
             if None in imgs:  # Commons lookups fail transiently under load; one retry
                 await asyncio.sleep(2)
                 imgs = [i or await find_image(client, c.year, c.make, c.model) for c, i in zip(cars, imgs, strict=True)]
-            with open(os.path.join(OUT, "best", f"{slug}.html"), "w") as f:
-                f.write(guide_page(slug, h1, intro, p, cars, list(imgs)))
+            with open(os.path.join(best, f"{slug}.html"), "w") as f:
+                f.write(guide_page(slug, title, intro, p, cars, list(imgs)))
+            # The app's Rankings page reads the same lists, photos included so cards don't look them up.
+            cars = [c.model_copy(update={"image": img}) for c, img in zip(cars, imgs, strict=True)]
+            lists.append({"slug": slug, "title": title, "intro": intro, "prefs": p.model_dump(),
+                          "cars": [c.model_dump() for c in cars]})  # fmt: skip
             print(f"{slug}: {len(cars)} cars, {sum(i is not None for i in imgs)} photos")
-    with open(os.path.join(OUT, "best", "index.html"), "w") as f:
+    with open(os.path.join(best, "index.html"), "w") as f:
         f.write(index_page())
     with open(os.path.join(OUT, "sitemap.xml"), "w") as f:
         f.write(sitemap())
+    with open(os.path.join(OUT, "rankings.json"), "w") as f:
+        json.dump({"updated": date.today().isoformat(), "lists": lists}, f, separators=(",", ":"))
 
 
 if __name__ == "__main__":

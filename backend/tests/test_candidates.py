@@ -2,7 +2,7 @@ from collections import Counter
 
 from app.candidates import MAX_CANDIDATES, build_candidates, matches
 from app.models import MAX_YEAR
-from app.vehicles import Catalog, classify_body, classify_drive, classify_fuel
+from app.vehicles import Catalog, base_model, classify_body, classify_drive, classify_fuel
 
 from .conftest import fleet, prefs, veh
 
@@ -107,3 +107,14 @@ def test_catalog_keeps_only_offered_brands() -> None:
     c.load([*fleet(), veh(999, 2020, "Yugo", "GV")])
     assert "Yugo" not in c.makes and all(v.make != "Yugo" for v in c.vehicles)
     assert "Toyota" in c.makes
+
+
+def test_base_model_keeps_distinct_variants() -> None:
+    assert base_model("500X AWD", "500") == "500X"  # a crossover, not the 500 hatchback
+    assert base_model("500 L", "500") == "500"
+    assert base_model("RAV4 AWD", "RAV4") == "RAV4"
+    assert base_model("Model 3 Long Range", "Model 3") == "Model 3"
+    assert base_model("Civic", "") == "Civic"
+    assert base_model("G37x AWD", "G37") == "G37"  # AWD trim of the same car
+    assert base_model("Cayenne/Coupe", "Cayenne") == "Cayenne"
+    assert base_model("M340i", "M") == "M340i"
