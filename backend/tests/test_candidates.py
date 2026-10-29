@@ -24,9 +24,9 @@ def test_hard_filters() -> None:
     assert not matches(rav, prefs(fuel_types=["Electric"]))
     assert not matches(rav, prefs(drivetrain="FWD"))
     assert not matches(rav, prefs(transmission="manual"))
-    assert matches(rav, prefs(min_seats=7))  # small SUVs can seat 7
-    assert not matches(rav, prefs(min_seats=8))
-    assert not matches(veh(2, 2020, "Mazda", "MX-5", vclass="Two Seaters"), prefs(min_seats=4))
+    assert matches(rav, prefs(seats=[7]))  # small SUVs can seat 7
+    assert not matches(rav, prefs(seats=[8]))
+    assert not matches(veh(2, 2020, "Mazda", "MX-5", vclass="Two Seaters"), prefs(seats=[4]))
 
 
 def test_new_condition_limits_to_recent_model_years() -> None:

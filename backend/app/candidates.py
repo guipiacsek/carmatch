@@ -107,7 +107,7 @@ def matches(v: Vehicle, p: Preferences, relax: Relax = NO_RELAX) -> bool:
         return False
     if p.transmission != "any" and v.transmission != p.transmission:
         return False
-    return v.max_seats >= p.min_seats
+    return v.max_seats >= p.fewest_seats
 
 
 def slug(*parts: object) -> str:
@@ -135,7 +135,7 @@ def heuristic(c: Candidate, p: Preferences) -> float:
         s += 2 * (c.make in LUXURY_MAKES)
     if "reliability" in pr:
         s += 1.5 * (c.make in RELIABLE_MAKES)
-    if p.min_seats > 5:  # 3-row seating is mostly large SUVs and minivans; small SUVs rarely qualify
+    if p.fewest_seats > 5:  # 3-row seating is mostly large SUVs and minivans; small SUVs rarely qualify
         s += 2 * (any(k in c.vclass for k in ("Standard Sport Utility", "Minivan", "Vans")))
     if p.budget < 100_000:
         s -= 3 * (c.make in EXOTIC_MAKES)

@@ -11,7 +11,8 @@ from pydantic import ValidationError
 
 from .candidates import TARGET_RESULTS, Candidate
 from .config import settings
-from .models import CarDetails, CarDetailsRequest, CarResult, LLMPick, LLMResponse, Preferences
+from .i18n import tr, word
+from .models import CarDetails, CarDetailsRequest, CarResult, Language, LLMPick, LLMResponse, Preferences
 from .vehicles import typical_seats_for
 
 log = logging.getLogger(__name__)
@@ -44,7 +45,9 @@ wrong answer. Never lower a price to fit the budget.
 of the same model may be offered; choose the year whose realistic price fits the budget.
 - seats: the car's actual typical maximum seating capacity.
 - bullets: exactly 3 short reasons (max 12 words each) why this car fits THIS shopper's priorities. Be factual, \
-use the candidate data and well-known facts only, no prices."""
+use the candidate data and well-known facts only, no prices.
+- Write the bullets in the language given by "language" (en, pt-BR, es or ja). Keep make and model names as they \
+are."""
 
 
 def strictify(schema: dict[str, Any]) -> dict[str, Any]:
@@ -70,9 +73,10 @@ def build_messages(p: Preferences, cands: list[Candidate], n: int, hide_budget: 
     data = {
         "today": date.today().isoformat(),
         "picks_requested": n,
-        # min_seats is enforced in code; showing it to the model made it inflate seat counts to comply.
+        "language": p.language,
+        # Seats are enforced in code; showing them to the model made it inflate seat counts to comply.
         # hide_budget: the same effect on prices (estimates bent to fit); callers then cut over-budget cars.
-        "preferences": p.model_dump(exclude={"min_seats", "budget"} if hide_budget else {"min_seats"}),
+        "preferences": p.model_dump(exclude={"seats", "language", "budget"} if hide_budget else {"seats", "language"}),
         "candidates": [
             {
                 "id": c.id,
@@ -147,13 +151,15 @@ def short(text: str) -> str:
     return " ".join(words[:MAX_BULLET_WORDS]).rstrip(",;:")
 
 
-def fallback_bullets(c: Candidate) -> list[str]:
-    eff = f"{c.mpge} MPGe combined (EPA)" if c.fuel == "Electric" else f"{c.mpg} MPG combined (EPA)"
-    trans = " or ".join(sorted({"auto": "automatic", "manual": "manual"}[t] for t in c.transmissions))
+def fallback_bullets(c: Candidate, lang: Language = "en") -> list[str]:
+    eff = tr(lang, "mpge", n=c.mpge) if c.fuel == "Electric" else tr(lang, "mpg", n=c.mpg)
+    trans = tr(lang, "or").join(
+        sorted(word(lang, {"auto": "automatic", "manual": "manual"}[t]) for t in c.transmissions)
+    )
     return [
-        f"{c.fuel} {c.body_type} matching your must-haves",
-        eff if (c.mpg or c.mpge) else f"{c.vclass} per EPA classification",
-        f"{' / '.join(sorted(c.drive))} with {trans} transmission",
+        tr(lang, "must_haves", fuel=word(lang, c.fuel), body=word(lang, c.body_type)),
+        eff if (c.mpg or c.mpge) else tr(lang, "vclass", vclass=c.vclass),
+        tr(lang, "drive", drive=" / ".join(sorted(c.drive)), trans=trans),
     ]
 
 
@@ -165,10 +171,10 @@ def to_result(c: Candidate, p: Preferences, pick: LLMPick | None) -> CarResult:
         lo, hi = sorted((pick.estimated_price_min, pick.estimated_price_max))
         price = (lo, hi)
         bullets = [short(b) for b in pick.bullets][:3]
-        bullets += fallback_bullets(c)[len(bullets) :]
+        bullets += fallback_bullets(c, p.language)[len(bullets) :]
         score, seats = pick.match_score, pick.seats
     else:  # no LLM data: grounded bullets only, no price
-        bullets = fallback_bullets(c)
+        bullets = fallback_bullets(c, p.language)
         score, seats = max(30, 70 - int(c.id[1:])), typical_seats_for(c.vclass, c.body_types)
     return CarResult(
         car_key=c.key,
@@ -201,7 +207,7 @@ def validate_batch(
         c = by_id.get(pick.id)
         if len(out) >= keep:
             break
-        if c is None or (c.make, c.model) in used or pick.seats < p.min_seats:
+        if c is None or (c.make, c.model) in used or not p.seats_ok(pick.seats):
             continue
         used.add((c.make, c.model))  # one model year per model across all results
         out.append(to_result(c, p, pick))
@@ -215,7 +221,7 @@ def backfill(p: Preferences, cands: list[Candidate], used: set[tuple[str, str]],
         if len(out) >= count:
             break
         # Only cars that typically seat enough people; we have no estimate to say otherwise.
-        if (c.make, c.model) not in used and typical_seats_for(c.vclass, c.body_types) >= p.min_seats:
+        if (c.make, c.model) not in used and p.seats_ok(typical_seats_for(c.vclass, c.body_types)):
             used.add((c.make, c.model))
             out.append(to_result(c, p, None))
     return out
@@ -243,7 +249,9 @@ Rules:
 instead of guessing. No prices.
 - summary: 2-3 sentences. pros/cons: short phrases (max 12 words). reliability: 1-2 sentences on known issues \
 or reputation for that generation. trims: the main US trims for that year. used_buying_tips: what to inspect or \
-ask about for this specific model. competitors: 3 direct rivals (make + model)."""
+ask about for this specific model. competitors: 3 direct rivals (make + model).
+- Write every text field in the language given by "language" (en, pt-BR, es or ja). Keep make, model and trim \
+names as they are."""
 
 
 async def car_details(client: httpx.AsyncClient, req: CarDetailsRequest, epa: dict[str, Any]) -> CarDetails:
@@ -255,7 +263,12 @@ async def car_details(client: httpx.AsyncClient, req: CarDetailsRequest, epa: di
         "temperature": 0.2,
         "messages": [
             {"role": "system", "content": DETAILS_PROMPT},
-            {"role": "user", "content": json.dumps({"car": req.model_dump(), "epa": epa})},
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {"language": req.language, "car": req.model_dump(exclude={"language"}), "epa": epa}
+                ),
+            },
         ],
         "response_format": {
             "type": "json_schema",

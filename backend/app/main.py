@@ -17,6 +17,7 @@ from . import llm
 from .auth import optional_user_id
 from .candidates import TARGET_RESULTS, Candidate, build_candidates
 from .config import MAX_BODY_BYTES, USER_AGENT, settings
+from .i18n import tr, word
 from .images import find_image, prefetch
 from .models import (
     MAX_YEAR,
@@ -266,6 +267,32 @@ async def car_details(req: CarDetailsRequest, request: Request) -> CarDetails:
     return details
 
 
+RATES_URL = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=BRL,JPY,MXN"  # ECB reference rates, no key
+RATES_TTL = 24 * 3600  # ECB publishes once per working day
+_rates: dict[str, Any] = {}
+_rates_at = -float(RATES_TTL)
+
+
+@app.get("/api/rates")
+async def rates(request: Request, response: Response) -> dict[str, Any]:
+    """USD exchange rates for showing prices in the visitor's currency. Refreshed at most once a day; if the
+    source is down, the last good rates are served (or none, and the UI shows USD)."""
+    global _rates, _rates_at
+    now = time.monotonic()
+    if now - _rates_at > RATES_TTL:
+        try:
+            r = await request.app.state.http.get(RATES_URL, timeout=8)
+            r.raise_for_status()
+            data = r.json()
+            _rates = {"date": data["date"], "rates": {k: float(v) for k, v in data["rates"].items()}}
+            _rates_at = now
+        except (httpx.HTTPError, KeyError, ValueError, TypeError, AttributeError) as e:
+            log.warning("exchange rates unavailable: %r", e)
+            _rates_at = now - RATES_TTL + 600  # retry in 10 minutes, not on every request
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return _rates or {"date": None, "rates": {}}
+
+
 @app.get("/api/results/{share_id}", response_model=RecommendResponse)
 async def shared_results(request: Request, share_id: str = Path(pattern=r"^[0-9a-f]{64}$")) -> RecommendResponse:
     """A shared results link. The id is the SHA-256 cache key, so it can't be guessed or enumerated."""
@@ -354,18 +381,14 @@ async def recommend(
             yield ndjson({"type": "cars", "cars": [c.model_dump() for c in extra]})
 
         final = llm.finalize(results)
+        lang = prefs.language
         notices = []
         if relaxed:
-            notices.append(f"Not enough exact matches, so we relaxed: {', '.join(relaxed)}.")
+            notices.append(tr(lang, "relaxed", what=", ".join(word(lang, r) for r in relaxed)))
         if len(final) < TARGET_RESULTS:
-            notices.append(
-                f"Only {len(final)} car{'s' if len(final) != 1 else ''} match your must-haves "
-                "(body type, fuel, transmission, seats). Try widening them."
-            )
+            notices.append(tr(lang, "only_n", n=len(final)))
         if cands and not picked:
-            notices.append(
-                "AI ranking is unavailable right now, so these are data-based matches without price estimates."
-            )
+            notices.append(tr(lang, "no_ai"))
         out = RecommendResponse(results=final, relaxed=relaxed, notice=" ".join(notices) or None)
         if failed:  # don't pin a degraded answer in the cache for 7 days, so there's nothing to share either
             yield done_event(out)

@@ -4,6 +4,7 @@ import { lazy, Suspense, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAccount } from "@/hooks/account"
+import { t, useI18n, type Key } from "@/i18n"
 import { useCarImage } from "@/hooks/useCarImage"
 import { carName, priceRange } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
@@ -21,7 +22,7 @@ export function CarPhoto({ car, image }: { car: CarResult; image: CarImage | nul
       <div
         className="flex aspect-[16/10] flex-col items-center justify-center gap-2 bg-gradient-to-br from-muted to-muted/40 text-muted-foreground"
         role="img"
-        aria-label={`No photo available for ${name}`}
+        aria-label={t("card.noPhoto", { name })}
       >
         <CarFront className="size-12" aria-hidden />
         <span className="text-sm">{car.make} {car.model}</span>
@@ -39,7 +40,7 @@ export function CarPhoto({ car, image }: { car: CarResult; image: CarImage | nul
         className="aspect-[16/10] w-full bg-muted object-cover"
       />
       <figcaption className="truncate px-4 pt-1.5 text-[11px] text-muted-foreground">
-        Photo:{" "}
+        {t("card.photo")}{" "}
         <a href={image.page_url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
           {image.author}
         </a>
@@ -51,7 +52,7 @@ export function CarPhoto({ car, image }: { car: CarResult; image: CarImage | nul
         ) : (
           image.license
         )}
-        {" via Wikimedia Commons"}
+        {` ${t("card.viaCommons")}`}
       </figcaption>
     </figure>
   )
@@ -66,13 +67,8 @@ export interface CompareControl {
 /** Arc color by position: gray, red, mustard, navy (see --arc-* in index.css). */
 export const arcColor = (index: number) => `var(--arc-${(index % 4) + 1})`
 
-const FUEL_SHORT: Record<CarResult["fuel_type"], string> = {
-  Gas: "Gas",
-  Hybrid: "Hybrid",
-  "Plug-in Hybrid": "PHEV",
-  Electric: "EV",
-  Diesel: "Diesel",
-}
+const fuelShort = (f: CarResult["fuel_type"]) =>
+  t((f === "Plug-in Hybrid" || f === "Electric" ? `short.${f}` : `v.${f}`) as Key)
 
 function ArcPhoto({ car, image }: { car: CarResult; image: CarImage | null | undefined }) {
   const [failed, setFailed] = useState(false)
@@ -80,7 +76,7 @@ function ArcPhoto({ car, image }: { car: CarResult; image: CarImage | null | und
   if (image === undefined) return <Skeleton className={cn(box, "bg-white/40")} />
   if (!image || failed) {
     return (
-      <div className={cn(box, "grid place-items-center bg-white/25 text-white")} role="img" aria-label={`No photo of ${carName(car)}`}>
+      <div className={cn(box, "grid place-items-center bg-white/25 text-white")} role="img" aria-label={t("card.noPhoto", { name: carName(car) })}>
         <CarFront className="size-12" aria-hidden />
       </div>
     )
@@ -109,6 +105,7 @@ export function CarCard({
   compare?: CompareControl
 }) {
   const { isFavorite, toggleFavorite } = useAccount()
+  useI18n()
   const fav = isFavorite(car.car_key)
   const [busy, setBusy] = useState(false)
   const name = carName(car)
@@ -117,10 +114,10 @@ export function CarCard({
   const color = arcColor(index)
 
   const chips = [
-    { label: "Fuel", value: FUEL_SHORT[car.fuel_type] },
-    { label: "Drivetrain", value: car.drivetrain.split(" / ")[0] },
-    { label: "Seats", value: car.seats, unit: "seats" },
-    { label: "Efficiency", value: car.fuel_type === "Electric" ? car.mpge : car.mpg, unit: car.fuel_type === "Electric" ? "mpge" : "mpg" },
+    { label: t("card.fuel"), value: fuelShort(car.fuel_type) },
+    { label: t("drive.label"), value: car.drivetrain.split(" / ")[0] },
+    { label: t("seats.label"), value: car.seats, unit: t("card.seatsUnit") },
+    { label: t("card.efficiency"), value: car.fuel_type === "Electric" ? car.mpge : car.mpg, unit: car.fuel_type === "Electric" ? "mpge" : "mpg" },
   ]
 
   return (
@@ -138,7 +135,7 @@ export function CarCard({
         <div aria-hidden className="absolute -top-[60px] -left-10 h-[380px] w-[calc(100%+30px)] rounded-br-[300px] bg-[var(--c)] opacity-95" />
         {showRank && (
           <p className="absolute top-4 left-[18px] text-[13px] font-extrabold tracking-[2px]">
-            #{car.rank} · {car.match_score}%<span className="sr-only"> match</span>
+            #{car.rank} · {car.match_score}%<span className="sr-only"> {t("card.match")}</span>
           </p>
         )}
         <ArcPhoto car={car} image={image} />
@@ -152,13 +149,13 @@ export function CarCard({
             <span className="block text-2xl font-extralight tracking-wide uppercase">{car.make}</span>
             <span className="block text-[22px] font-extrabold">{car.model}</span>
             <span className="block text-xs font-light opacity-85">{car.year}</span>
-            <span className="sr-only">: more details</span>
+            <span className="sr-only">{t("dash.moreDetails")}</span>
           </button>
         </h2>
         <button
           type="button"
           className="absolute right-3 bottom-4 grid size-10 place-items-center rounded-full text-white transition hover:bg-white/20 disabled:opacity-60"
-          aria-label={fav ? `Remove ${name} from favorites` : `Save ${name} to favorites`}
+          aria-label={fav ? t("card.unsave", { name }) : t("card.save", { name })}
           aria-pressed={fav}
           disabled={busy}
           onClick={async () => {
@@ -172,7 +169,7 @@ export function CarCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-3.5 px-[18px] pt-[18px] pb-4">
-        <p className="label-caps text-muted-foreground">More information</p>
+        <p className="label-caps text-muted-foreground">{t("card.moreInfo")}</p>
         <dl className="flex gap-2.5">
           {chips.map((c, i) => (
             <div
@@ -193,16 +190,16 @@ export function CarCard({
         </dl>
 
         <p className="label-caps text-muted-foreground">
-          AI estimate
-          {car.over_budget && <span className="ml-2 text-primary">Above budget</span>}
+          {t("card.aiEstimate")}
+          {car.over_budget && <span className="ml-2 text-primary">{t("card.aboveBudget")}</span>}
         </p>
         <dl className="grid gap-2 rounded-[10px] border px-3 py-2.5 text-xs">
           <div>
-            <dt className="label-caps text-[9px] text-muted-foreground">Price range</dt>
+            <dt className="label-caps text-[9px] text-muted-foreground">{t("card.priceRange")}</dt>
             <dd className="text-sm font-semibold">{priceRange(car)}</dd>
           </div>
           <div>
-            <dt className="label-caps text-[9px] text-muted-foreground">Why it fits</dt>
+            <dt className="label-caps text-[9px] text-muted-foreground">{t("card.why")}</dt>
             <dd>
               <ul className="mt-1 grid gap-1">
                 {car.bullets.map((b) => (
@@ -223,7 +220,7 @@ export function CarCard({
                 "flex cursor-pointer items-center gap-2 text-xs font-semibold select-none",
                 compare.disabled && "cursor-not-allowed opacity-50",
               )}
-              title={compare.disabled ? "You can compare up to 3 cars" : undefined}
+              title={compare.disabled ? t("card.compareMax") : undefined}
             >
               <input
                 type="checkbox"
@@ -232,7 +229,7 @@ export function CarCard({
                 disabled={compare.disabled}
                 onChange={compare.onToggle}
               />
-              Compare
+              {t("card.compare")}
             </label>
           ) : (
             <span />
@@ -240,13 +237,13 @@ export function CarCard({
           <Button asChild size="sm" className="rounded-full">
             <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
               Cars.com <ExternalLink className="size-3.5" aria-hidden />
-              <span className="sr-only"> listings for {name} (opens in a new tab)</span>
+              <span className="sr-only"> {t("card.listingsFor", { name })}</span>
             </a>
           </Button>
         </div>
         {image && (
           <p className="truncate text-[9px] text-muted-foreground">
-            Photo:{" "}
+            {t("card.photo")}{" "}
             <a href={image.page_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
               {image.author}, {image.license}
             </a>

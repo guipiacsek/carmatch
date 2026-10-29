@@ -7,6 +7,7 @@ import { LoadingScreen } from "@/components/LoadingScreen"
 import { ShareButton } from "@/components/ShareButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { t, useI18n } from "@/i18n"
 import { ApiError, getImage, recommend } from "@/lib/api"
 import { hasSavedPrefs, loadPrefs, prefChips, takePresetFromUrl } from "@/lib/preferences"
 import { KEYS, load, save } from "@/lib/storage"
@@ -20,16 +21,19 @@ interface Stored {
 }
 
 function friendlyError(e: unknown): string {
-  if (e instanceof ApiError && e.status === 429) {
+  const status = e instanceof ApiError ? e.status : -1
+  if (e instanceof ApiError && status === 429) {
     const mins = e.retryAfter ? Math.max(1, Math.ceil(e.retryAfter / 60)) : null
-    return `You've reached the hourly search limit. ${mins ? `Try again in about ${mins} minute${mins === 1 ? "" : "s"}.` : "Please try again later."} Searches you've already run still load instantly.`
+    return `${t("err.limit")} ${mins ? t("err.tryIn", { n: mins }) : t("err.later")} ${t("err.cachedOk")}`
   }
-  if (e instanceof ApiError && e.status === 422) return "Some answers look invalid. Please review them and try again."
-  return e instanceof Error ? e.message : "Something went wrong. Please try again."
+  if (status === 422) return t("err.invalid")
+  if (status === 0) return t("err.network")
+  return t("err.generic")
 }
 
 export default function Results() {
   useState(takePresetFromUrl) // once, before the saved-prefs check below
+  const { lang } = useI18n()
   const [state, setState] = useState<
     | { kind: "loading"; cars: CarResult[] } // cars stream in as each GPT batch finishes
     | { kind: "error"; message: string; retryable: boolean }
@@ -37,7 +41,7 @@ export default function Results() {
   >({ kind: "loading", cars: [] })
 
   const run = useCallback((signal?: AbortSignal) => {
-    const prefs = loadPrefs()
+    const prefs = { ...loadPrefs(), language: lang } // AI text in the UI language; switching language re-runs
     const key = JSON.stringify(prefs)
     const stored = load<Stored | null>(KEYS.results, null)
     if (stored?.prefs === key) {
@@ -59,7 +63,7 @@ export default function Results() {
         setState({ kind: "error", message: friendlyError(e), retryable: !(e instanceof ApiError && e.status === 429) })
       },
     )
-  }, [])
+  }, [lang])
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -71,7 +75,7 @@ export default function Results() {
 
   const editLink = (
     <Button asChild variant="secondary" size="icon" className="size-14 rounded-[18px] shadow-[0_6px_20px_#0000001a]">
-      <Link to="/" onClick={() => save(KEYS.step, 0)} aria-label="Edit answers" title="Edit answers">
+      <Link to="/" onClick={() => save(KEYS.step, 0)} aria-label={t("res.edit")} title={t("res.edit")}>
         <Pencil className="size-5" aria-hidden />
       </Link>
     </Button>
@@ -81,8 +85,8 @@ export default function Results() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center gap-4">
         <div className="mr-auto">
-          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">Your matches</h1>
-          <p className="text-sm font-light text-muted-foreground">Ranked by AI from EPA vehicle data. Prices are estimates.</p>
+          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">{t("res.title")}</h1>
+          <p className="text-sm font-light text-muted-foreground">{t("res.subtitle")}</p>
         </div>
         <div className="flex gap-3">
           {state.kind === "done" && state.data.share_id && <ShareButton shareId={state.data.share_id} />}
@@ -90,7 +94,7 @@ export default function Results() {
         </div>
       </div>
       {state.kind !== "done" && (
-        <ul className="-mt-2 flex flex-wrap gap-2" aria-label="Your answers">
+        <ul className="-mt-2 flex flex-wrap gap-2" aria-label={t("res.answers")}>
           {prefChips(loadPrefs()).map((c) => (
             <li key={c} className="rounded-full bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
               {c}
@@ -110,7 +114,7 @@ export default function Results() {
               <p role="alert">{state.message}</p>
               {state.retryable && (
                 <Button onClick={() => run()}>
-                  <RotateCcw aria-hidden /> Try again
+                  <RotateCcw aria-hidden /> {t("res.tryAgain")}
                 </Button>
               )}
             </CardContent>
@@ -128,7 +132,7 @@ export default function Results() {
             {state.data.results.length === 0 ? (
               <Card>
                 <CardContent className="grid justify-items-start gap-4">
-                  <p>No cars match those must-haves. Try allowing more body types or fuel types.</p>
+                  <p>{t("res.none")}</p>
                   {editLink}
                 </CardContent>
               </Card>

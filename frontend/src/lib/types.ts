@@ -21,6 +21,10 @@ export type Condition = "new" | "used" | "either"
 export type Transmission = "auto" | "manual" | "any"
 export type Drivetrain = (typeof DRIVETRAINS)[number] | "any"
 
+export const LANGUAGES = ["en", "pt-BR", "es", "ja"] as const
+export type Language = (typeof LANGUAGES)[number]
+export const SEAT_COUNTS = [2, 3, 4, 5, 6, 7, 8] as const
+
 export const MIN_YEAR = 1990
 export const MAX_YEAR = new Date().getFullYear() + 1
 
@@ -35,7 +39,8 @@ export interface Preferences {
   priorities: Priority[]
   transmission: Transmission
   drivetrain: Drivetrain
-  min_seats: number
+  seats: number[] // exact seat counts wanted; empty = any
+  language: Language // the AI writes its text in this language
 }
 
 export interface CarImage {
@@ -75,10 +80,11 @@ export interface RecommendResponse {
   share_id: string | null // opens these results at /r/<share_id> for 7 days
 }
 
-/** public/rankings.json, written by backend/app/seo.py */
+/** public/rankings.{lang}.json, written by backend/app/seo.py */
 export interface Ranking {
   slug: string
   title: string
+  short: string // title without "Top 10", shown under the TOP 10 badge
   intro: string
   prefs: Preferences
   cars: CarResult[] // photos included

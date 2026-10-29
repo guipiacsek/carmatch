@@ -7,6 +7,7 @@ import { ResultList } from "@/components/ResultList"
 import { Button } from "@/components/ui/button"
 import { MAX_FAVORITES, useAccount } from "@/hooks/account"
 import { useCarImage } from "@/hooks/useCarImage"
+import { money, t, useI18n } from "@/i18n"
 import { carName, efficiency, priceRange } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
 import { prefChips } from "@/lib/preferences"
@@ -51,9 +52,7 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
         className="absolute -top-20 -left-[60px] h-[330px] w-[calc(100%+60px)] rounded-br-[300px] bg-[var(--c)] sm:h-[calc(100%+160px)] sm:w-[64%] sm:rounded-br-[520px]"
       />
       <div className="relative flex min-h-[150px] flex-col p-6 text-white sm:px-7">
-        <p className="text-[13px] font-extrabold tracking-[2px] uppercase">
-          #1 · Best match · {car.match_score}%
-        </p>
+        <p className="text-[13px] font-extrabold tracking-[2px] uppercase">{t("dash.best", { score: car.match_score })}</p>
         <h2 className="mt-auto pt-6 leading-[1.02]">
           <button type="button" className="text-left underline-offset-4 focus-visible:underline" onClick={open} aria-haspopup="dialog">
             <span className="block text-[clamp(26px,3vw,40px)] font-extralight tracking-wide uppercase">{car.make}</span>
@@ -61,7 +60,7 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
             <span className="mt-1 block text-sm font-light opacity-85">
               {car.year} · {car.drivetrain.split(" / ")[0]} · {efficiency(car)}
             </span>
-            <span className="sr-only">: more details</span>
+            <span className="sr-only">{t("dash.moreDetails")}</span>
           </button>
         </h2>
       </div>
@@ -69,13 +68,13 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
         {image && !failed ? (
           <img src={image.url} alt={carName(car)} decoding="async" onError={() => setFailed(true)} className={cn(photo, "bg-white/30 object-cover")} />
         ) : (
-          <div className={cn(photo, "grid place-items-center bg-muted text-muted-foreground")} role="img" aria-label={`No photo of ${carName(car)}`}>
+          <div className={cn(photo, "grid place-items-center bg-muted text-muted-foreground")} role="img" aria-label={t("card.noPhoto", { name: carName(car) })}>
             <CarFront className="size-12" aria-hidden />
           </div>
         )}
         <div className="grid gap-2.5 px-6 sm:pr-7 sm:pl-0">
           <p className="label-caps text-muted-foreground">
-            AI estimate {car.over_budget && <span className="ml-2 text-primary">Above budget</span>}
+            {t("card.aiEstimate")} {car.over_budget && <span className="ml-2 text-primary">{t("card.aboveBudget")}</span>}
           </p>
           <p className="text-2xl font-extrabold">{priceRange(car)}</p>
           <ul className="grid gap-1 text-[13px] font-medium">
@@ -90,14 +89,14 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
             <Button asChild size="sm" className="rounded-full">
               <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
                 Cars.com <ExternalLink className="size-3.5" aria-hidden />
-                <span className="sr-only"> listings for {carName(car)} (opens in a new tab)</span>
+                <span className="sr-only"> {t("card.listingsFor", { name: carName(car) })}</span>
               </a>
             </Button>
             <Button
               variant="ghost"
               size="icon"
               className="rounded-full"
-              aria-label={fav ? `Remove ${carName(car)} from favorites` : `Save ${carName(car)} to favorites`}
+              aria-label={fav ? t("card.unsave", { name: carName(car) }) : t("card.save", { name: carName(car) })}
               aria-pressed={fav}
               disabled={busy}
               onClick={async () => {
@@ -117,9 +116,15 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
 
 function Stat({ index, value, label }: { index: number; value: string; label: string }) {
   return (
-    <div className="relative flex min-h-[132px] flex-col justify-end overflow-hidden rounded-[26px] bg-card p-5">
+    <div className="@container relative flex min-h-[132px] flex-col justify-end overflow-hidden rounded-[26px] bg-card p-5">
       <div aria-hidden className="absolute -top-10 -left-[30px] h-24 w-[110px] rounded-br-[90px]" style={{ background: arcColor(index) }} />
-      <p className="relative text-[32px] leading-tight font-extrabold">{value}</p>
+      {/* Shrinks long values ("R$ 187.300", "¥6,000,000") to the tile's width; a digit is about 0.6em */}
+      <p
+        className="relative text-[min(32px,calc(160cqi/var(--n)))] leading-tight font-extrabold whitespace-nowrap"
+        style={{ "--n": value.length } as React.CSSProperties}
+      >
+        {value}
+      </p>
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
     </div>
   )
@@ -162,12 +167,12 @@ function Saved({ best }: { best: CarResult }) {
     return (
       <section className={cn(panel, "bg-[var(--arc-4)] text-white")}>
         <h3 className="text-xl leading-tight font-light">
-          Found the one? <b className="block font-extrabold">Check listings near you</b>
+          {t("dash.found")} <b className="block font-extrabold">{t("dash.checkListings")}</b>
         </h3>
         <Button asChild size="sm" className="justify-self-start rounded-full">
           <a href={listingsUrl(best)} target="_blank" rel="noopener noreferrer sponsored">
-            See listings <ExternalLink className="size-3.5" aria-hidden />
-            <span className="sr-only"> for {carName(best)} on Cars.com (opens in a new tab)</span>
+            {t("dash.seeListings")} <ExternalLink className="size-3.5" aria-hidden />
+            <span className="sr-only"> {t("dash.seeListingsFor", { name: carName(best) })}</span>
           </a>
         </Button>
       </section>
@@ -176,33 +181,32 @@ function Saved({ best }: { best: CarResult }) {
   return (
     <section className={panel}>
       <h3 className={panelTitle}>
-        Saved{" "}
+        {t("dash.saved")}{" "}
         {user && (
           <small className="text-xs font-medium text-muted-foreground">
-            {favorites.length} of {MAX_FAVORITES}
+            {t("dash.ofMax", { n: favorites.length, max: MAX_FAVORITES })}
           </small>
         )}
       </h3>
       <p className="text-[13px] font-light text-muted-foreground">
-        {user ? "Tap ♡ on a car to keep it. Saving more than 10 replaces your oldest." : "Tap ♡ on a car to keep it. Sign in to save favorites."}
+        {user ? t("dash.savedHint") : t("dash.signInHint")}
       </p>
       {user ? (
         <Button asChild size="sm" className="justify-self-start rounded-full">
-          <Link to="/favorites">My favorites</Link>
+          <Link to="/favorites">{t("nav.favorites")}</Link>
         </Button>
       ) : (
         <Button size="sm" className="justify-self-start rounded-full" onClick={openAuth}>
-          Sign in
+          {t("nav.signIn")}
         </Button>
       )}
     </section>
   )
 }
 
-const k = (n: number) => `$${Math.round(n / 1000)}k`
-
 /** Results as a dashboard: best-match hero, stat tiles, search / best value / saved panels, then every match. */
 export function Dashboard({ cars, prefs }: { cars: CarResult[]; prefs: Preferences }) {
+  useI18n()
   const [open, setOpen] = useState<{ car: CarResult; color: string } | null>(null)
   const onOpen: Open = (car, color) => setOpen({ car, color })
   const best = cars[0]
@@ -218,22 +222,22 @@ export function Dashboard({ cars, prefs }: { cars: CarResult[]; prefs: Preferenc
       <div className="grid gap-5 lg:grid-cols-12">
         <Hero car={best} onOpen={onOpen} />
         <div className="grid grid-cols-2 gap-5 lg:col-span-4">
-          <Stat index={0} value={String(cars.length)} label="matches found" />
-          <Stat index={1} value={mpgs.length ? String(Math.round(mpgs.reduce((s, m) => s + m, 0) / mpgs.length)) : "–"} label="avg EPA combined MPG" />
-          <Stat index={2} value={String(cars.filter((c) => !c.over_budget).length)} label="within your budget" />
-          <Stat index={3} value={k(prefs.budget)} label="your budget" />
+          <Stat index={0} value={String(cars.length)} label={t("dash.matches")} />
+          <Stat index={1} value={mpgs.length ? String(Math.round(mpgs.reduce((s, m) => s + m, 0) / mpgs.length)) : "–"} label={t("dash.avgMpg")} />
+          <Stat index={2} value={String(cars.filter((c) => !c.over_budget).length)} label={t("dash.inBudget")} />
+          <Stat index={3} value={money(prefs.budget)} label={t("dash.budget")} />
         </div>
       </div>
 
       <div className="grid gap-5 md:grid-cols-3">
         <section className={panel}>
           <h3 className={panelTitle}>
-            Your search
+            {t("dash.search")}
             <Link to="/" onClick={() => save(KEYS.step, 0)} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
-              <Pencil className="size-3" aria-hidden /> Edit
+              <Pencil className="size-3" aria-hidden /> {t("dash.edit")}
             </Link>
           </h3>
-          <ul className="flex flex-wrap gap-2" aria-label="Your answers">
+          <ul className="flex flex-wrap gap-2" aria-label={t("res.answers")}>
             {prefChips(prefs).map((c) => (
               <li key={c} className="rounded-full bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 {c}
@@ -242,8 +246,8 @@ export function Dashboard({ cars, prefs }: { cars: CarResult[]; prefs: Preferenc
           </ul>
         </section>
         <Pick
-          title={priced.length ? "Best value" : "Most efficient"}
-          note={priced.length ? "lowest estimate" : "EPA rating"}
+          title={priced.length ? t("dash.bestValue") : t("dash.mostEfficient")}
+          note={priced.length ? t("dash.lowest") : t("dash.epaRating")}
           car={value}
           index={2}
           onOpen={onOpen}
@@ -253,7 +257,7 @@ export function Dashboard({ cars, prefs }: { cars: CarResult[]; prefs: Preferenc
 
       <section className="grid gap-3">
         <h3 className="flex items-baseline justify-between text-[15px] font-bold">
-          All matches <small className="text-xs font-medium text-muted-foreground">ranked by AI · tick Compare on 2–3</small>
+          {t("dash.all")} <small className="text-xs font-medium text-muted-foreground">{t("dash.allHint")}</small>
         </h3>
         <ResultList cars={cars} />
       </section>

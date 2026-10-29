@@ -2,6 +2,8 @@ import type { User } from "@supabase/supabase-js"
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
+import { t } from "@/i18n"
+
 import { KEYS, load, save } from "@/lib/storage"
 import { getSupabase, supabaseEnabled } from "@/lib/supabase"
 import type { CarResult } from "@/lib/types"
@@ -57,7 +59,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       .select("car_key, car_data, created_at")
       .order("created_at", { ascending: false })
     if (error) {
-      toast.error("Couldn't load your favorites.")
+      toast.error(t("acc.loadFail"))
       return []
     }
     setFavorites(data as Favorite[])
@@ -71,14 +73,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       if (current.some((f) => f.car_key === car.car_key)) return
       const { error } = await supabase.from("favorites").insert({ car_key: car.car_key, car_data: car })
       if (error && error.code !== "23505") {
-        toast.error("Couldn't save that favorite. Please try again.")
+        toast.error(t("acc.saveFail"))
         return
       }
       await refresh()
       toast.success(
         current.length >= MAX_FAVORITES
-          ? `Saved. You can keep ${MAX_FAVORITES} favorites, so your oldest one was removed.`
-          : `Saved ${car.year} ${car.make} ${car.model} to favorites.`,
+          ? t("acc.savedMax", { max: MAX_FAVORITES })
+          : t("acc.saved", { name: `${car.year} ${car.make} ${car.model}` }),
       )
     },
     [refresh],
@@ -111,7 +113,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     async (car: CarResult) => {
       const supabase = await getSupabase()
       if (!supabase) {
-        toast.error("Accounts aren't configured on this deployment.")
+        toast.error(t("fav.disabled"))
         return
       }
       if (!user) {
@@ -121,7 +123,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       }
       if (favorites.some((f) => f.car_key === car.car_key)) {
         const { error } = await supabase.from("favorites").delete().eq("car_key", car.car_key)
-        if (error) toast.error("Couldn't remove that favorite.")
+        if (error) toast.error(t("acc.removeFail"))
         await refresh()
       } else {
         await add(car, favorites)

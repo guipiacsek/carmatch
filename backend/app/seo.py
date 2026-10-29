@@ -1,13 +1,15 @@
 """Top 10 rankings ("Top 10 new SUVs under $40,000") built from real CarMatch searches.
 
-Run from backend/ with OPENAI_API_KEY set:  python -m app.seo
-Writes frontend/public/rankings.json (the app's Rankings page) and the same lists as static SEO pages
-(frontend/public/best/*.html, sitemap.xml). Re-run monthly so prices and years stay current.
+Run from backend/ with OPENAI_API_KEY set:  python -m app.seo [en pt-BR es ja]   (default: all four)
+Writes frontend/public/rankings.{lang}.json (the app's Rankings page, one file per language). The English pass also
+writes the static SEO pages (frontend/public/best/*.html, sitemap.xml). The output is static: nothing regenerates it
+on its own, so pass only the languages you want rebuilt.
 """
 
 import asyncio
 import json
 import os
+import sys
 from collections.abc import Mapping
 from datetime import date
 from html import escape
@@ -31,41 +33,156 @@ NEW = {"condition": "new", "year_min": MAX_YEAR - 1, "year_max": MAX_YEAR}
 
 RANK_SIZE = 10  # "Top 10" lists; the app's searches show 9
 
-# slug, title, intro, preferences (anything left out takes the Preferences default)
-GUIDES: list[tuple[str, str, str, dict[str, object]]] = [
-    ("new-suvs-under-40000", "Top 10 new SUVs under $40,000",
-     "The new SUVs that balance space, tech and price at or under $40k MSRP.",
-     {**NEW, "body_types": ["SUV"], "budget": 40_000, "priorities": ["family", "reliability"]}),
-    ("used-suvs-under-30000", "Top 10 used SUVs under $30,000",
-     "Room for passengers and cargo without a new-car price: the used SUVs that give the most for $30k.",
-     {**USED, "body_types": ["SUV"], "budget": 30_000, "priorities": ["reliability", "family"]}),
-    ("new-sedans-under-30000", "Top 10 new sedans under $30,000",
-     "Comfortable, efficient and affordable: the new sedans worth shortlisting for under $30k.",
-     {**NEW, "body_types": ["Sedan"], "budget": 30_000, "priorities": ["reliability", "fuel_economy"]}),
-    ("new-trucks-under-50000", "Top 10 new pickup trucks under $50,000",
-     "Pickups that tow, haul and hold their value, for under $50k new.",
-     {**NEW, "body_types": ["Truck"], "budget": 50_000, "priorities": ["towing", "reliability"]}),
-    ("electric-cars-under-50000", "Top 10 electric cars under $50,000",
-     "New EVs with real-world range and fast charging for under $50k.",
-     {**NEW, "fuel_types": ["Electric"], "budget": 50_000, "priorities": ["commuting"]}),
-    ("hybrids-under-35000", "Top 10 new hybrids under $35,000",
-     "High-MPG hybrids that cut fuel bills, for under $35k new.",
-     {**NEW, "fuel_types": ["Hybrid"], "budget": 35_000, "priorities": ["fuel_economy", "reliability"]}),
-    ("3-row-suvs-under-50000", "Top 10 3-row family SUVs under $50,000",
-     "Seven seats or more for growing families, new and under $50k.",
-     {**NEW, "body_types": ["SUV"], "budget": 50_000, "min_seats": 7, "priorities": ["family"]}),
-    ("first-cars-under-20000", "Top 10 used first cars under $20,000",
-     "Safe, reliable and cheap to insure: used cars for new drivers under $20k.",
-     {**USED, "body_types": ["Sedan", "Hatchback", "Compact"], "budget": 20_000,
-      "priorities": ["reliability", "fuel_economy"]}),
-    ("sports-cars-under-50000", "Top 10 sports cars under $50,000",
-     "Coupes and convertibles that are fun to drive, new or nearly new, for under $50k.",
-     {"condition": "either", "year_min": MAX_YEAR - 5, "year_max": MAX_YEAR, "body_types": ["Coupe", "Convertible"],
-      "budget": 50_000, "priorities": ["performance"]}),
-    ("luxury-suvs-under-70000", "Top 10 new luxury SUVs under $70,000",
-     "Premium cabins and badges, new and under $70k.",
-     {**NEW, "body_types": ["SUV"], "budget": 70_000, "priorities": ["luxury"]}),
-]  # fmt: skip
+# slug, preferences (anything left out takes the Preferences default)
+GUIDES: list[tuple[str, dict[str, object]]] = [
+    ("new-suvs-under-40000", {**NEW, "body_types": ["SUV"], "budget": 40_000, "priorities": ["family", "reliability"]}),
+    (
+        "used-suvs-under-30000",
+        {**USED, "body_types": ["SUV"], "budget": 30_000, "priorities": ["reliability", "family"]},
+    ),
+    (
+        "new-sedans-under-30000",
+        {**NEW, "body_types": ["Sedan"], "budget": 30_000, "priorities": ["reliability", "fuel_economy"]},
+    ),
+    (
+        "new-trucks-under-50000",
+        {**NEW, "body_types": ["Truck"], "budget": 50_000, "priorities": ["towing", "reliability"]},
+    ),
+    ("electric-cars-under-50000", {**NEW, "fuel_types": ["Electric"], "budget": 50_000, "priorities": ["commuting"]}),
+    (
+        "hybrids-under-35000",
+        {**NEW, "fuel_types": ["Hybrid"], "budget": 35_000, "priorities": ["fuel_economy", "reliability"]},
+    ),
+    (
+        "3-row-suvs-under-50000",
+        {**NEW, "body_types": ["SUV"], "budget": 50_000, "seats": [7, 8], "priorities": ["family"]},
+    ),
+    (
+        "first-cars-under-20000",
+        {
+            **USED,
+            "body_types": ["Sedan", "Hatchback", "Compact"],
+            "budget": 20_000,
+            "priorities": ["reliability", "fuel_economy"],
+        },
+    ),
+    (
+        "sports-cars-under-50000",
+        {
+            "condition": "either",
+            "year_min": MAX_YEAR - 5,
+            "year_max": MAX_YEAR,
+            "body_types": ["Coupe", "Convertible"],
+            "budget": 50_000,
+            "priorities": ["performance"],
+        },
+    ),
+    ("luxury-suvs-under-70000", {**NEW, "body_types": ["SUV"], "budget": 70_000, "priorities": ["luxury"]}),
+]
+
+# Per language and slug: title, short label (shown under a "TOP 10" badge), intro.
+# Budgets stay in US dollars: these are U.S.-market prices.
+TEXT: dict[str, dict[str, tuple[str, str, str]]] = {
+    "en": {
+        "new-suvs-under-40000": ("Top 10 new SUVs under $40,000", "New SUVs under $40,000",
+            "The new SUVs that balance space, tech and price at or under $40k MSRP."),
+        "used-suvs-under-30000": ("Top 10 used SUVs under $30,000", "Used SUVs under $30,000",
+            "Room for passengers and cargo without a new-car price: the used SUVs that give the most for $30k."),
+        "new-sedans-under-30000": ("Top 10 new sedans under $30,000", "New sedans under $30,000",
+            "Comfortable, efficient and affordable: the new sedans worth shortlisting for under $30k."),
+        "new-trucks-under-50000": ("Top 10 new pickup trucks under $50,000", "New pickup trucks under $50,000",
+            "Pickups that tow, haul and hold their value, for under $50k new."),
+        "electric-cars-under-50000": ("Top 10 electric cars under $50,000", "Electric cars under $50,000",
+            "New EVs with real-world range and fast charging for under $50k."),
+        "hybrids-under-35000": ("Top 10 new hybrids under $35,000", "New hybrids under $35,000",
+            "High-MPG hybrids that cut fuel bills, for under $35k new."),
+        "3-row-suvs-under-50000": ("Top 10 3-row family SUVs under $50,000", "3-row family SUVs under $50,000",
+            "Seven seats or more for growing families, new and under $50k."),
+        "first-cars-under-20000": ("Top 10 used first cars under $20,000", "Used first cars under $20,000",
+            "Safe, reliable and cheap to insure: used cars for new drivers under $20k."),
+        "sports-cars-under-50000": ("Top 10 sports cars under $50,000", "Sports cars under $50,000",
+            "Coupes and convertibles that are fun to drive, new or nearly new, for under $50k."),
+        "luxury-suvs-under-70000": ("Top 10 new luxury SUVs under $70,000", "New luxury SUVs under $70,000",
+            "Premium cabins and badges, new and under $70k."),
+    },
+    "pt-BR": {
+        "new-suvs-under-40000": ("Top 10 SUVs novos até US$ 40.000", "SUVs novos até US$ 40.000",
+            "Os SUVs novos que equilibram espaço, tecnologia e preço por até US$ 40 mil."),
+        "used-suvs-under-30000": ("Top 10 SUVs usados até US$ 30.000", "SUVs usados até US$ 30.000",
+            "Espaço para passageiros e bagagem sem preço de carro novo: "
+            "os SUVs usados que mais entregam por US$ 30 mil."),
+        "new-sedans-under-30000": ("Top 10 sedãs novos até US$ 30.000", "Sedãs novos até US$ 30.000",
+            "Confortáveis, econômicos e acessíveis: os sedãs novos que valem a pena por até US$ 30 mil."),
+        "new-trucks-under-50000": ("Top 10 picapes novas até US$ 50.000", "Picapes novas até US$ 50.000",
+            "Picapes que rebocam, carregam e mantêm o valor, por até US$ 50 mil novas."),
+        "electric-cars-under-50000": ("Top 10 carros elétricos até US$ 50.000", "Carros elétricos até US$ 50.000",
+            "Elétricos novos com autonomia real e recarga rápida por até US$ 50 mil."),
+        "hybrids-under-35000": ("Top 10 híbridos novos até US$ 35.000", "Híbridos novos até US$ 35.000",
+            "Híbridos econômicos que reduzem o gasto com combustível, por até US$ 35 mil novos."),
+        "3-row-suvs-under-50000": ("Top 10 SUVs familiares de 3 fileiras até US$ 50.000",
+            "SUVs de 3 fileiras até US$ 50.000",
+            "Sete lugares ou mais para famílias em crescimento, novos e por até US$ 50 mil."),
+        "first-cars-under-20000": ("Top 10 primeiros carros usados até US$ 20.000",
+            "Primeiro carro usado até US$ 20.000",
+            "Seguros, confiáveis e baratos de segurar: carros usados para novos motoristas por até US$ 20 mil."),
+        "sports-cars-under-50000": ("Top 10 esportivos até US$ 50.000", "Esportivos até US$ 50.000",
+            "Cupês e conversíveis divertidos de dirigir, novos ou seminovos, por até US$ 50 mil."),
+        "luxury-suvs-under-70000": ("Top 10 SUVs de luxo novos até US$ 70.000", "SUVs de luxo novos até US$ 70.000",
+            "Cabines e marcas premium, novos e por até US$ 70 mil."),
+    },
+    "es": {
+        "new-suvs-under-40000": ("Top 10 SUVs nuevas por menos de US$40,000", "SUVs nuevas por menos de US$40,000",
+            "Las SUVs nuevas que equilibran espacio, tecnología y precio por US$40 mil o menos."),
+        "used-suvs-under-30000": ("Top 10 SUVs usadas por menos de US$30,000", "SUVs usadas por menos de US$30,000",
+            "Espacio para pasajeros y equipaje sin precio de auto nuevo: "
+            "las SUVs usadas que más ofrecen por US$30 mil."),
+        "new-sedans-under-30000": ("Top 10 sedanes nuevos por menos de US$30,000",
+            "Sedanes nuevos por menos de US$30,000",
+            "Cómodos, eficientes y accesibles: los sedanes nuevos que vale la pena considerar por menos de US$30 mil."),
+        "new-trucks-under-50000": ("Top 10 pickups nuevas por menos de US$50,000",
+            "Pickups nuevas por menos de US$50,000",
+            "Pickups que remolcan, cargan y conservan su valor, nuevas por menos de US$50 mil."),
+        "electric-cars-under-50000": ("Top 10 autos eléctricos por menos de US$50,000",
+            "Autos eléctricos por menos de US$50,000",
+            "Eléctricos nuevos con autonomía real y carga rápida por menos de US$50 mil."),
+        "hybrids-under-35000": ("Top 10 híbridos nuevos por menos de US$35,000",
+            "Híbridos nuevos por menos de US$35,000",
+            "Híbridos de alto rendimiento que reducen el gasto en gasolina, nuevos por menos de US$35 mil."),
+        "3-row-suvs-under-50000": ("Top 10 SUVs familiares de 3 filas por menos de US$50,000",
+            "SUVs de 3 filas por menos de US$50,000",
+            "Siete asientos o más para familias que crecen, nuevas y por menos de US$50 mil."),
+        "first-cars-under-20000": ("Top 10 primeros autos usados por menos de US$20,000",
+            "Primer auto usado por menos de US$20,000",
+            "Seguros, confiables y baratos de asegurar: autos usados para conductores nuevos por menos de US$20 mil."),
+        "sports-cars-under-50000": ("Top 10 deportivos por menos de US$50,000", "Deportivos por menos de US$50,000",
+            "Coupés y convertibles divertidos de manejar, nuevos o seminuevos, por menos de US$50 mil."),
+        "luxury-suvs-under-70000": ("Top 10 SUVs de lujo nuevas por menos de US$70,000",
+            "SUVs de lujo nuevas por menos de US$70,000",
+            "Interiores y marcas premium, nuevas y por menos de US$70 mil."),
+    },
+    "ja": {
+        "new-suvs-under-40000": ("4万ドル以下の新車SUV トップ10", "4万ドル以下の新車SUV",
+            "広さ、装備、価格のバランスがとれた4万ドル以下の新車SUV。"),
+        "used-suvs-under-30000": ("3万ドル以下の中古SUV トップ10", "3万ドル以下の中古SUV",
+            "新車価格を払わずに人も荷物もたっぷり。3万ドルで最も満足できる中古SUV。"),
+        "new-sedans-under-30000": ("3万ドル以下の新車セダン トップ10", "3万ドル以下の新車セダン",
+            "快適で燃費がよく手頃。3万ドル以下で候補に入れたい新車セダン。"),
+        "new-trucks-under-50000": ("5万ドル以下の新車ピックアップ トップ10", "5万ドル以下の新車ピックアップ",
+            "牽引も積載もこなし、価値が落ちにくい5万ドル以下の新車ピックアップ。"),
+        "electric-cars-under-50000": ("5万ドル以下の電気自動車 トップ10", "5万ドル以下の電気自動車",
+            "実用的な航続距離と急速充電を備えた5万ドル以下の新車EV。"),
+        "hybrids-under-35000": ("3万5千ドル以下の新車ハイブリッド トップ10", "3万5千ドル以下の新車ハイブリッド",
+            "燃料代を抑える高燃費ハイブリッド。新車で3万5千ドル以下。"),
+        "3-row-suvs-under-50000": ("5万ドル以下の3列シートSUV トップ10", "5万ドル以下の3列シートSUV",
+            "家族が増えても安心の7人乗り以上。新車で5万ドル以下。"),
+        "first-cars-under-20000": ("2万ドル以下の初めての中古車 トップ10", "2万ドル以下の初めての中古車",
+            "安全で信頼性が高く保険料も安い、初心者ドライバー向けの2万ドル以下の中古車。"),
+        "sports-cars-under-50000": ("5万ドル以下のスポーツカー トップ10", "5万ドル以下のスポーツカー",
+            "運転が楽しいクーペとオープンカー。新車または高年式で5万ドル以下。"),
+        "luxury-suvs-under-70000": ("7万ドル以下の新車高級SUV トップ10", "7万ドル以下の新車高級SUV",
+            "上質な室内とブランド力。新車で7万ドル以下。"),
+    },
+}  # fmt: skip
 
 
 async def search(client: httpx.AsyncClient, p: Preferences) -> list[CarResult]:
@@ -168,7 +285,7 @@ def guide_page(
     month = date.today().strftime("%B %Y")
     title = f"{h1} ({date.today().year})"
     personalize = "/results?p=" + quote(p.model_dump_json(), safe="")
-    others = "".join(f'<a href="/best/{s}">{escape(t)}</a>' for s, t, _, _ in GUIDES if s != slug)
+    others = "".join(f'<a href="/best/{s}">{escape(t)}</a>' for s, (t, _, _) in TEXT["en"].items() if s != slug)
     body = f"""<main><h1>{escape(title)}</h1><p class="lede">{escape(intro)}</p>
 <p class="meta">Updated {month} · Ranked by AI from EPA vehicle data · \
 <a href="{personalize}">Personalize this list →</a></p>
@@ -196,7 +313,7 @@ def index_page() -> str:
         f'<li class="car" style="--c:var(--a{(i % 4) + 1})"><a href="/best/{s}" style="text-decoration:none">'
         f'<div class="arc" style="height:120px"><h2><b>{escape(t)}</b></h2></div>'
         f'<div class="body"><p>{escape(intro)}</p></div></a></li>'
-        for i, (s, t, intro, _) in enumerate(GUIDES)
+        for i, (s, (t, _, intro)) in enumerate(TEXT["en"].items())
     )
     body = f"""<main><h1>Top 10 car rankings</h1><p class="lede">Ranked shortlists for common budgets and needs, \
 built from EPA vehicle data and AI price estimates.</p><ol class="cars">{links}</ol></main>"""
@@ -206,44 +323,62 @@ built from EPA vehicle data and AI price estimates.</p><ol class="cars">{links}<
 
 def sitemap() -> str:
     today = date.today().isoformat()
-    urls = ["/", "/best", *(f"/best/{s}" for s, _, _, _ in GUIDES)]
+    urls = ["/", "/best", *(f"/best/{s}" for s, _ in GUIDES)]
     rows = "".join(f"<url><loc>{SITE}{u}</loc><lastmod>{today}</lastmod></url>" for u in urls)
     return f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{rows}</urlset>\n'
 
 
-async def main() -> None:
+async def main(langs: list[str]) -> None:
     await load_catalog()
     # Everything is built in memory and written only once every list succeeded, so a failed OpenAI call
     # can't leave frontend/public half old, half new.
     pages: dict[str, str] = {}
-    lists = []
+    files: dict[str, list[dict[str, object]]] = {}
     async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
-        for slug, title, intro, raw in GUIDES:
-            p = Preferences.model_validate(raw)
-            cars = await search(client, p)
-            imgs = await asyncio.gather(*(find_image(client, c.year, c.make, c.model) for c in cars))
-            if None in imgs:  # Commons lookups fail transiently under load; one retry
-                await asyncio.sleep(2)
-                imgs = [i or await find_image(client, c.year, c.make, c.model) for c, i in zip(cars, imgs, strict=True)]
-            pages[f"{slug}.html"] = guide_page(slug, title, intro, p, cars, list(imgs))
-            # The app's Rankings page reads the same lists, photos included so cards don't look them up.
-            cars = [c.model_copy(update={"image": img}) for c, img in zip(cars, imgs, strict=True)]
-            lists.append({"slug": slug, "title": title, "intro": intro, "prefs": p.model_dump(),
-                          "cars": [c.model_dump() for c in cars]})  # fmt: skip
-            print(f"{slug}: {len(cars)} cars, {sum(i is not None for i in imgs)} photos")
-    pages["index.html"] = index_page()
-    best = os.path.join(OUT, "best")
-    os.makedirs(best, exist_ok=True)
-    for old in os.listdir(best):  # categories change; don't leave orphaned pages behind
-        os.remove(os.path.join(best, old))
-    for name, html in pages.items():
-        with open(os.path.join(best, name), "w") as f:
-            f.write(html)
-    with open(os.path.join(OUT, "sitemap.xml"), "w") as f:
-        f.write(sitemap())
-    with open(os.path.join(OUT, "rankings.json"), "w") as f:
-        json.dump({"updated": date.today().isoformat(), "lists": lists}, f, separators=(",", ":"))
+        for lang in langs:
+            lists = files[lang] = []
+            for slug, raw in GUIDES:
+                title, short, intro = TEXT[lang][slug]
+                p = Preferences.model_validate({**raw, "language": lang})
+                cars = await search(client, p)
+                imgs = await asyncio.gather(*(find_image(client, c.year, c.make, c.model) for c in cars))
+                if None in imgs:  # Commons lookups fail transiently under load; one retry
+                    await asyncio.sleep(2)
+                    imgs = [
+                        i or await find_image(client, c.year, c.make, c.model) for c, i in zip(cars, imgs, strict=True)
+                    ]
+                if lang == "en":  # the SEO pages are English only
+                    pages[f"{slug}.html"] = guide_page(slug, title, intro, p, cars, list(imgs))
+                # The app's Rankings page reads the same lists, photos included so cards don't look them up.
+                cars = [c.model_copy(update={"image": img}) for c, img in zip(cars, imgs, strict=True)]
+                lists.append(
+                    {
+                        "slug": slug,
+                        "title": title,
+                        "short": short,
+                        "intro": intro,
+                        "prefs": p.model_dump(exclude={"language"}),
+                        "cars": [c.model_dump() for c in cars],
+                    }
+                )
+                print(f"{lang} {slug}: {len(cars)} cars, {sum(i is not None for i in imgs)} photos")
+    if pages:
+        pages["index.html"] = index_page()
+        best = os.path.join(OUT, "best")
+        os.makedirs(best, exist_ok=True)
+        for old in os.listdir(best):  # categories change; don't leave orphaned pages behind
+            os.remove(os.path.join(best, old))
+        for name, html in pages.items():
+            with open(os.path.join(best, name), "w") as f:
+                f.write(html)
+        with open(os.path.join(OUT, "sitemap.xml"), "w") as f:
+            f.write(sitemap())
+    for lang, lists in files.items():
+        with open(os.path.join(OUT, f"rankings.{lang}.json"), "w") as f:
+            json.dump(
+                {"updated": date.today().isoformat(), "lists": lists}, f, separators=(",", ":"), ensure_ascii=False
+            )
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main([a for a in sys.argv[1:] if a in TEXT] or list(TEXT)))

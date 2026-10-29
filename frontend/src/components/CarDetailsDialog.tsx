@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getCarDetails } from "@/lib/api"
+import { useI18n, type Key } from "@/i18n"
+import { ApiError, getCarDetails } from "@/lib/api"
 import { carName, efficiency, priceRange } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
 import type { CarDetails, CarImage, CarResult } from "@/lib/types"
@@ -44,25 +45,31 @@ export default function CarDetailsDialog({
   color: string
   onClose: () => void
 }) {
+  const { lang, t } = useI18n()
   const [details, setDetails] = useState<CarDetails | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<Key | null>(null)
   const name = carName(car)
 
   const load = useCallback(() => {
     setError(null)
-    getCarDetails(car).then(setDetails, (e: Error) => setError(e.message))
-  }, [car])
+    setDetails(null)
+    getCarDetails(car, lang).then(setDetails, (e: unknown) => {
+      const status = e instanceof ApiError ? e.status : 0
+      setError(status === 429 ? "det.err429" : status === 404 ? "det.err404" : status === 503 ? "det.err503" : "det.errGeneric")
+    })
+  }, [car, lang])
   useEffect(load, [load])
 
+  const v = (x: string) => t(`v.${x}` as Key)
   const facts = [
-    ["AI price estimate", priceRange(car)],
-    ["Efficiency (EPA)", efficiency(car)],
-    ["Body", car.body_type],
-    ["Fuel", car.fuel_type],
-    ["Drivetrain", car.drivetrain],
-    ["Transmission", car.transmission],
-    ["Seats", String(car.seats)],
-    ["EPA class", details?.epa.epa_class ?? "…"],
+    [t("det.price"), priceRange(car)],
+    [t("det.efficiency"), efficiency(car)],
+    [t("det.body"), v(car.body_type)],
+    [t("card.fuel"), v(car.fuel_type)],
+    [t("drive.label"), car.drivetrain],
+    [t("trans.label"), v(car.transmission)],
+    [t("seats.label"), String(car.seats)],
+    [t("det.class"), details?.epa.epa_class ?? "…"],
   ]
 
   return (
@@ -81,7 +88,8 @@ export default function CarDetailsDialog({
               <span className="block text-3xl font-extrabold">{car.model}</span>
             </DialogTitle>
             <DialogDescription className="text-white/85">
-              {car.year} · {car.match_score}% match{car.over_budget ? " · above budget" : ""}
+              {t("det.match", { year: car.year, score: car.match_score })}
+              {car.over_budget ? t("det.above") : ""}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -96,15 +104,15 @@ export default function CarDetailsDialog({
           ))}
         </dl>
         <p className="text-xs text-muted-foreground">
-          Specs are EPA data. The overview, pros and cons below are AI-written and can be wrong, so verify before buying.
+          {t("det.disclaimer")}
         </p>
 
         <div aria-live="polite" aria-busy={!details && !error} className="grid gap-5">
           {error && (
             <div className="grid justify-items-start gap-3 rounded-xl border p-4">
-              <p role="alert" className="text-sm">{error}</p>
+              <p role="alert" className="text-sm">{t(error)}</p>
               <Button size="sm" variant="outline" onClick={load}>
-                <RotateCcw aria-hidden /> Try again
+                <RotateCcw aria-hidden /> {t("res.tryAgain")}
               </Button>
             </div>
           )}
@@ -112,7 +120,7 @@ export default function CarDetailsDialog({
           {!details && !error && (
             <div className="grid gap-3">
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Sparkles className="size-4" aria-hidden /> Researching this car…
+                <Sparkles className="size-4" aria-hidden /> {t("det.researching")}
               </p>
               <Skeleton className="h-16 w-full" />
               <div className="grid gap-3 sm:grid-cols-2">
@@ -127,17 +135,17 @@ export default function CarDetailsDialog({
             <>
               <p className="text-sm leading-relaxed">{details.summary}</p>
               <div className="grid gap-5 sm:grid-cols-2">
-                <Section title="Pros">
+                <Section title={t("det.pros")}>
                   <Bullets items={details.pros} icon={CheckCircle2} tone="text-emerald-600 dark:text-emerald-400" />
                 </Section>
-                <Section title="Cons">
+                <Section title={t("det.cons")}>
                   <Bullets items={details.cons} icon={AlertTriangle} tone="text-amber-600 dark:text-amber-400" />
                 </Section>
               </div>
-              <Section title="Reliability">
+              <Section title={t("det.reliability")}>
                 <p className="text-sm">{details.reliability}</p>
               </Section>
-              <Section title="Main trims">
+              <Section title={t("det.trims")}>
                 <ul className="grid gap-2 sm:grid-cols-2">
                   {details.trims.map((t) => (
                     <li key={t.name} className="rounded-lg bg-muted/60 px-3 py-2 text-sm">
@@ -147,10 +155,10 @@ export default function CarDetailsDialog({
                   ))}
                 </ul>
               </Section>
-              <Section title="If you're buying used">
+              <Section title={t("det.used")}>
                 <Bullets items={details.used_buying_tips} icon={Wrench} tone="text-primary" />
               </Section>
-              <Section title="Also consider">
+              <Section title={t("det.also")}>
                 <div className="flex flex-wrap gap-2">
                   {details.competitors.map((c) => (
                     <Badge key={c} variant="outline">
@@ -165,7 +173,7 @@ export default function CarDetailsDialog({
 
         <Button asChild className="h-auto w-full rounded-full py-2.5 whitespace-normal sm:w-fit">
           <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
-            See {name} on Cars.com <ExternalLink aria-hidden />
+            {t("det.carsCom", { name })} <ExternalLink aria-hidden />
           </a>
         </Button>
         </div>

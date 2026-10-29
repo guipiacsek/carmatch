@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 
@@ -5,6 +7,7 @@ interface Option<T extends string> {
   value: T
   label: string
   hint?: string
+  icon?: ReactNode
 }
 
 const itemClass =
@@ -13,9 +16,12 @@ const itemClass =
 function Items<T extends string>({ options }: { options: Option<T>[] }) {
   return options.map((o) => (
     <ToggleGroupItem key={o.value} value={o.value} variant="outline" className={itemClass}>
-      <span className="flex flex-col">
-        <span className="font-medium">{o.label}</span>
-        {o.hint && <span className="text-xs opacity-75">{o.hint}</span>}
+      <span className="flex items-center gap-3">
+        {o.icon}
+        <span className="flex flex-col">
+          <span className="font-medium">{o.label}</span>
+          {o.hint && <span className="text-xs opacity-75">{o.hint}</span>}
+        </span>
       </span>
     </ToggleGroupItem>
   ))

@@ -14,6 +14,8 @@ Priority = Literal["commuting", "family", "performance", "fuel_economy", "reliab
 Condition = Literal["new", "used", "either"]
 Transmission = Literal["auto", "manual", "any"]
 Drivetrain = Literal["AWD", "FWD", "RWD", "4WD"]
+Language = Literal["en", "pt-BR", "es", "ja"]  # the AI writes its text in this language
+Seats = Annotated[int, Field(ge=2, le=9)]
 Brand = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40, pattern=r"^[A-Za-z0-9 .&'\-]+$")
 ]
@@ -32,12 +34,21 @@ class Preferences(BaseModel):
     priorities: list[Priority] = Field(default_factory=list, max_length=8)
     transmission: Transmission = "any"
     drivetrain: Drivetrain | Literal["any"] = "any"
-    min_seats: int = Field(default=2, ge=2, le=9)
+    seats: list[Seats] = Field(default_factory=list, max_length=8)  # exact seat counts wanted; empty = any
+    language: Language = "en"
 
-    @field_validator("brands", "body_types", "fuel_types", "priorities")
+    @field_validator("brands", "body_types", "fuel_types", "priorities", "seats")
     @classmethod
     def _dedupe_sort(cls, v: list[str]) -> list[str]:
         return sorted(set(v))
+
+    def seats_ok(self, n: int) -> bool:
+        return n in self.seats if self.seats else n >= 2
+
+    @property
+    def fewest_seats(self) -> int:
+        """The smallest seat count asked for (2 = any), for prefilters that only know a class's upper bound."""
+        return min(self.seats, default=2)
 
     @model_validator(mode="after")
     def _years_ordered(self) -> "Preferences":
@@ -113,6 +124,7 @@ class CarDetailsRequest(BaseModel):
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60, pattern=r"^[A-Za-z0-9 .&'/+()\-]+$")
     ]
     fuel_type: FuelType
+    language: Language = "en"
 
 
 class Trim(BaseModel):

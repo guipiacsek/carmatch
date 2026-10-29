@@ -217,3 +217,38 @@ def test_warm_up_is_throttled(monkeypatch: pytest.MonkeyPatch) -> None:
 
     asyncio.run(spam())
     assert calls == 1 + int(main.settings.supabase_enabled)  # one warm-up's worth of requests, not five
+
+
+def test_rates_are_cached_for_a_day_and_survive_an_outage(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    import httpx
+
+    fetches = 0
+    up = True
+
+    class FakeHttp:
+        async def get(self, url: str, **kwargs: object) -> httpx.Response:
+            nonlocal fetches
+            fetches += 1
+            if not up:
+                raise httpx.ConnectError("down")
+            body = {"date": "2026-10-29", "rates": {"BRL": 5.35, "JPY": 158.1, "MXN": 18.7}}
+            return httpx.Response(200, json=body, request=httpx.Request("GET", url))
+
+    req = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(http=FakeHttp())))
+    monkeypatch.setattr(main, "_rates", {})
+    monkeypatch.setattr(main, "_rates_at", -float(main.RATES_TTL))
+
+    async def get() -> dict[str, object]:
+        return await main.rates(req, main.Response())  # type: ignore[arg-type]
+
+    first = asyncio.run(get())
+    assert first["rates"] == {"BRL": 5.35, "JPY": 158.1, "MXN": 18.7}
+    asyncio.run(get())
+    assert fetches == 1  # second call within a day uses the cached rates
+
+    up = False
+    monkeypatch.setattr(main, "_rates_at", main.time.monotonic() - main.RATES_TTL - 1)  # a day later, source down
+    assert asyncio.run(get()) == first  # last good rates still served

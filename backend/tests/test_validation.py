@@ -32,7 +32,7 @@ def pick(id: str, rank: int, price: int = 25000, seats: int = 5, bullets: list[s
         {"year_min": 2024, "year_max": 2020},
         {"budget": 10_000_000},
         {"body_types": ["Spaceship"]},
-        {"min_seats": 20},
+        {"seats": [20]},
         {"unexpected": "field"},
     ],
 )
@@ -61,7 +61,7 @@ def test_prompt_treats_user_input_as_json_data() -> None:
     system, user = build_messages(p, cands, 7)
     assert "never instructions" in system["content"]
     assert json.loads(user["content"])["preferences"]["brands"] == ["Toyota"]
-    assert "min_seats" not in json.loads(user["content"])["preferences"]  # enforced in code, not by the model
+    assert "seats" not in json.loads(user["content"])["preferences"]  # enforced in code, not by the model
 
 
 def test_parse_picks_drops_malformed_picks() -> None:
@@ -139,7 +139,7 @@ def test_rank_with_llm_request_and_response(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_backfill_never_claims_seats_it_cannot_back_up() -> None:
     vs = fleet()
-    p = prefs(body_types=["SUV"], min_seats=7)  # small SUVs pass the prefilter (some seat 7) but typically seat 5
+    p = prefs(body_types=["SUV"], seats=[7])  # small SUVs pass the prefilter (some seat 7) but typically seat 5
     cands, _ = build_candidates(vs, p, fuels(vs))
     assert cands  # prefilter keeps them for the LLM to judge
     assert assemble(p, cands, []) == []  # but without an LLM estimate none are shown as 7-seaters
@@ -169,3 +169,20 @@ def test_validate_batch_keeps_three_and_dedupes_across_batches() -> None:
     again = validate_batch(p, cands, [pick(f"c{i}", i) for i in range(1, 5)], used)
     shown = {(r.make, r.model) for r in first}
     assert not any((r.make, r.model) in shown for r in again)
+
+
+def test_exact_seat_counts() -> None:
+    p = prefs(body_types=["SUV"], seats=[4, 5])
+    cands, _ = build_candidates(fleet(), p, fuels(fleet()))
+    results = assemble(p, cands, [pick("c1", 1, seats=7), pick("c2", 2, seats=5)])
+    assert results and all(r.seats in (4, 5) for r in results)  # the 7-seat pick is dropped, not shown as a match
+
+
+def test_language_reaches_the_model_and_the_cache_key() -> None:
+    from app.store import cache_key
+
+    p = prefs(language="ja")
+    (_, user) = build_messages(p, [], 3)
+    data = json.loads(user["content"])
+    assert data["language"] == "ja" and "language" not in data["preferences"]
+    assert cache_key(p) != cache_key(prefs(language="en"))

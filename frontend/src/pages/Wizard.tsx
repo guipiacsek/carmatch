@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Search, Trophy } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
+import { BodyIcon } from "@/components/BodyIcon"
 import { MultiChoice, SingleChoice } from "@/components/ChoiceGroup"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
@@ -10,6 +11,7 @@ import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { Toggle } from "@/components/ui/toggle"
+import { money, t, useI18n, type Key } from "@/i18n"
 import { getMakes } from "@/lib/api"
 import { BUDGET_RANGE, clampBudget, loadPrefs, savePrefs } from "@/lib/preferences"
 import { KEYS, load, save } from "@/lib/storage"
@@ -19,32 +21,23 @@ import {
   FUEL_TYPES,
   MAX_YEAR,
   MIN_YEAR,
+  PRIORITIES,
+  SEAT_COUNTS,
   type Condition,
   type Drivetrain,
   type Preferences,
-  type Priority,
   type Transmission,
 } from "@/lib/types"
 
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
-
-const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
-  { value: "commuting", label: "Commuting" },
-  { value: "family", label: "Family" },
-  { value: "performance", label: "Performance" },
-  { value: "fuel_economy", label: "Fuel economy" },
-  { value: "reliability", label: "Reliability" },
-  { value: "towing", label: "Towing / hauling" },
-  { value: "off_road", label: "Off-road" },
-  { value: "luxury", label: "Luxury" },
-]
+// Catalog values keep their English API value; only the label is translated.
+const label = (v: string) => t(`v.${v}` as Key)
 
 function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const [makes, setMakes] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState("")
   useEffect(() => {
-    getMakes().then(setMakes, (e: Error) => setError(e.message))
+    getMakes().then(setMakes, () => setError("brands.error"))
   }, [])
   const shown = useMemo(
     () => (makes ?? []).filter((m) => value.includes(m) || m.toLowerCase().includes(query.trim().toLowerCase())),
@@ -60,14 +53,14 @@ function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) 
         onPressedChange={() => onChange([])}
         className="h-11 justify-start rounded-xl px-4 data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
       >
-        No preference, show me any brand
+        {t("brands.any")}
       </Toggle>
       <div className="relative">
         <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
           type="search"
-          placeholder="Search brands"
-          aria-label="Search brands"
+          placeholder={t("brands.search")}
+          aria-label={t("brands.search")}
           className="h-11 pl-9"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -75,12 +68,12 @@ function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) 
       </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
-          {error}
+          {t("brands.error")}
         </p>
       )}
       <div
         role="group"
-        aria-label="Brands"
+        aria-label={t("brands.group")}
         className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto p-0.5 sm:grid-cols-3"
       >
         {!makes && !error && Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}
@@ -95,11 +88,11 @@ function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) 
             {m}
           </Toggle>
         ))}
-        {makes && shown.length === 0 && <p className="col-span-full text-sm text-muted-foreground">No brands match.</p>}
+        {makes && shown.length === 0 && <p className="col-span-full text-sm text-muted-foreground">{t("brands.none")}</p>}
       </div>
       {value.length > 0 && (
         <p className="text-sm text-muted-foreground" aria-live="polite">
-          Selected: {value.join(", ")}
+          {t("brands.selected", { list: value.join(", ") })}
         </p>
       )}
     </div>
@@ -107,19 +100,19 @@ function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) 
 }
 
 interface Step {
-  title: string
-  help?: string
+  title: Key
+  help?: Key
   render: (p: Preferences, set: (patch: Partial<Preferences>) => void) => ReactNode
 }
 
 const STEPS: Step[] = [
   {
-    title: "Any favorite brands?",
-    help: "Pick as many as you like, or skip.",
+    title: "brands.title",
+    help: "brands.help",
     render: (p, set) => <Brands value={p.brands} onChange={(brands) => set({ brands })} />,
   },
   {
-    title: "Which model years?",
+    title: "years.title",
     render: (p, set) => (
       <div className="grid gap-6 pt-4">
         <p className="text-center text-3xl font-semibold tabular-nums" aria-live="polite">
@@ -132,7 +125,7 @@ const STEPS: Step[] = [
           minStepsBetweenThumbs={0}
           value={[p.year_min, p.year_max]}
           onValueChange={([year_min, year_max]) => set({ year_min, year_max })}
-          thumbLabels={["Oldest model year", "Newest model year"]}
+          thumbLabels={[t("years.oldest"), t("years.newest")]}
         />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>{MIN_YEAR}</span>
@@ -142,41 +135,41 @@ const STEPS: Step[] = [
     ),
   },
   {
-    title: "New or used?",
+    title: "cond.title",
     render: (p, set) => (
       <SingleChoice<Condition>
-        label="Condition"
+        label={t("cond.label")}
         value={p.condition}
         onChange={(condition) => set({ condition, budget: clampBudget(p.budget, condition) })}
         options={[
-          { value: "new", label: "New", hint: "Current model years" },
-          { value: "used", label: "Used" },
-          { value: "either", label: "Either" },
+          { value: "new", label: t("cond.new"), hint: t("cond.newHint") },
+          { value: "used", label: t("cond.used") },
+          { value: "either", label: t("cond.both"), hint: t("cond.bothHint") },
         ]}
       />
     ),
   },
   {
-    title: "What body style?",
-    help: "Choose one or more. Leave empty for any.",
+    title: "body.title",
+    help: "wiz.anyHelp",
     render: (p, set) => (
       <MultiChoice
-        label="Body type"
+        label={t("body.label")}
         value={p.body_types}
         onChange={(body_types) => set({ body_types })}
-        options={BODY_TYPES.map((b) => ({ value: b, label: b }))}
+        options={BODY_TYPES.map((b) => ({ value: b, label: label(b), icon: <BodyIcon type={b} /> }))}
       />
     ),
   },
   {
-    title: "What's your budget?",
-    help: "Your maximum. We'll favor cars under it.",
+    title: "budget.title",
+    help: "budget.help",
     render: (p, set) => {
       const r = BUDGET_RANGE[p.condition]
       return (
         <div className="grid gap-6 pt-4">
           <p className="text-center text-3xl font-semibold tabular-nums" aria-live="polite">
-            {usd.format(p.budget)}
+            {money(p.budget)}
             {p.budget >= r.max && "+"}
           </p>
           <Slider
@@ -185,80 +178,86 @@ const STEPS: Step[] = [
             step={r.step}
             value={[clampBudget(p.budget, p.condition)]}
             onValueChange={([budget]) => set({ budget })}
-            thumbLabels={["Maximum budget in US dollars"]}
+            thumbLabels={[t("budget.thumb")]}
           />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{usd.format(r.min)}</span>
-            <span>{usd.format(r.max)}+</span>
+            <span>{money(r.min)}</span>
+            <span>{money(r.max)}+</span>
           </div>
         </div>
       )
     },
   },
   {
-    title: "Which fuel types?",
-    help: "Choose one or more. Leave empty for any.",
+    title: "fuel.title",
+    help: "wiz.anyHelp",
     render: (p, set) => (
       <MultiChoice
-        label="Fuel type"
+        label={t("fuel.label")}
         value={p.fuel_types}
         onChange={(fuel_types) => set({ fuel_types })}
-        options={FUEL_TYPES.map((f) => ({ value: f, label: f }))}
+        options={FUEL_TYPES.map((f) => ({ value: f, label: label(f) }))}
       />
     ),
   },
   {
-    title: "What matters most?",
-    help: "Pick your priorities.",
+    title: "prio.title",
+    help: "prio.help",
     render: (p, set) => (
       <MultiChoice
-        label="Priorities"
+        label={t("prio.label")}
         value={p.priorities}
         onChange={(priorities) => set({ priorities })}
-        options={PRIORITY_OPTIONS}
+        options={PRIORITIES.map((x) => ({ value: x, label: label(x) }))}
       />
     ),
   },
   {
-    title: "Transmission?",
+    title: "trans.title",
     render: (p, set) => (
       <SingleChoice<Transmission>
-        label="Transmission"
+        label={t("trans.label")}
         value={p.transmission}
         onChange={(transmission) => set({ transmission })}
         options={[
-          { value: "any", label: "No preference" },
-          { value: "auto", label: "Automatic" },
-          { value: "manual", label: "Manual" },
+          { value: "any", label: t("wiz.noPref") },
+          { value: "auto", label: label("Automatic") },
+          { value: "manual", label: label("Manual") },
         ]}
       />
     ),
   },
   {
-    title: "Drivetrain?",
+    title: "drive.title",
     render: (p, set) => (
       <SingleChoice<Drivetrain>
-        label="Drivetrain"
+        label={t("drive.label")}
         value={p.drivetrain}
         onChange={(drivetrain) => set({ drivetrain })}
-        options={[{ value: "any", label: "No preference" }, ...DRIVETRAINS.map((d) => ({ value: d, label: d }))]}
+        options={[
+          { value: "any", label: t("wiz.noPref") },
+          ...DRIVETRAINS.map((d) => ({ value: d, label: t(`drive.${d}`) })),
+        ]}
       />
     ),
   },
   {
-    title: "How many seats, at least?",
+    title: "seats.title",
+    help: "seats.help",
     render: (p, set) => (
-      <SingleChoice<string>
-        label="Minimum seats"
-        value={String(p.min_seats)}
-        onChange={(v) => set({ min_seats: Number(v) })}
-        options={["2", "4", "5", "6", "7", "8"].map((n) => ({ value: n, label: n === "2" ? "Any (2+)" : `${n}+` }))}
+      <MultiChoice
+        label={t("seats.label")}
+        value={p.seats.map(String)}
+        onChange={(v) => set({ seats: v.map(Number).sort((a, b) => a - b) })}
+        options={SEAT_COUNTS.map((n) => ({ value: String(n), label: String(n) }))}
+        className="grid-cols-4 sm:grid-cols-7"
       />
     ),
   },
 ]
 
 export default function Wizard() {
+  useI18n() // re-render on language change
   const navigate = useNavigate()
   const [prefs, setPrefs] = useState<Preferences>(loadPrefs)
   const [step, setStep] = useState(() => Math.min(load<number>(KEYS.step, 0), STEPS.length - 1))
@@ -287,8 +286,8 @@ export default function Wizard() {
             <Trophy className="size-5" aria-hidden />
           </span>
           <span className="grid">
-            <span className="text-sm font-bold">Just browsing? See the Top 10 rankings</span>
-            <span className="text-xs font-light text-muted-foreground">SUVs, EVs, trucks, first cars and more</span>
+            <span className="text-sm font-bold">{t("wiz.browse")}</span>
+            <span className="text-xs font-light text-muted-foreground">{t("wiz.browseSub")}</span>
           </span>
           <ArrowRight className="ml-auto size-4 text-muted-foreground" aria-hidden />
         </Link>
@@ -296,32 +295,32 @@ export default function Wizard() {
       <div className="mb-6 grid gap-2">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>
-            Question {step + 1} of {STEPS.length}
+            {t("wiz.question", { n: step + 1, total: STEPS.length })}
           </span>
           <span>{Math.round(((step + 1) / STEPS.length) * 100)}%</span>
         </div>
-        <Progress value={((step + 1) / STEPS.length) * 100} aria-label="Wizard progress" />
+        <Progress value={((step + 1) / STEPS.length) * 100} aria-label={t("wiz.progress")} />
       </div>
 
       <Card>
         <CardHeader>
           <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">
-            {current.title}
+            {t(current.title)}
           </h1>
-          {current.help && <p className="text-sm text-muted-foreground">{current.help}</p>}
+          {current.help && <p className="text-sm text-muted-foreground">{t(current.help)}</p>}
         </CardHeader>
         <CardContent>{current.render(prefs, set)}</CardContent>
         <CardFooter className="justify-between gap-3">
           <Button variant="ghost" size="lg" onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
-            <ArrowLeft aria-hidden /> Back
+            <ArrowLeft aria-hidden /> {t("wiz.back")}
           </Button>
           {last ? (
             <Button size="lg" onClick={() => navigate("/results")}>
-              <Search aria-hidden /> Find a car
+              <Search aria-hidden /> {t("wiz.find")}
             </Button>
           ) : (
             <Button size="lg" onClick={() => setStep((s) => s + 1)}>
-              Next <ArrowRight aria-hidden />
+              {t("wiz.next")} <ArrowRight aria-hidden />
             </Button>
           )}
         </CardFooter>

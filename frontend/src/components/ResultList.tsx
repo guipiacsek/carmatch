@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { CarCard, CarPhoto } from "@/components/CarCard"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useCarImage } from "@/hooks/useCarImage"
+import { t, useI18n, type Key } from "@/i18n"
 import { carName, efficiency, priceRange } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
 import type { CarResult } from "@/lib/types"
@@ -23,6 +24,7 @@ export function ResultList({
   showRank?: boolean
   ordered?: boolean
 }) {
+  useI18n()
   const [picked, setPicked] = useState<string[]>([])
   const [open, setOpen] = useState(false)
   const row = useRef<HTMLOListElement & HTMLUListElement>(null)
@@ -37,7 +39,7 @@ export function ResultList({
       <List
         ref={row}
         tabIndex={0}
-        aria-label="Cars, scroll sideways for more"
+        aria-label={t("list.aria")}
         className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-px-4 px-4 pt-2 pb-8 outline-none [scrollbar-width:none] sm:-mx-1 sm:px-1 [&::-webkit-scrollbar]:hidden"
       >
         {cars.map((car, i) => (
@@ -58,14 +60,14 @@ export function ResultList({
 
       {cars.length > 1 && (
         <div
-          className="fixed bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-md bg-[#8c8c8c] p-1.5 text-white shadow-[0_10px_30px_#0003] dark:bg-[#3a3a3d]"
+          className="fixed bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-md bg-primary p-1.5 text-primary-foreground shadow-[0_10px_30px_color-mix(in_oklab,var(--primary)_40%,transparent)]"
           role="toolbar"
-          aria-label="Browse and compare"
+          aria-label={t("list.toolbar")}
         >
-          <button type="button" className="rounded px-3 py-1.5 hover:bg-white/15" onClick={() => scroll(-1)} aria-label="Previous cars">
+          <button type="button" className="rounded px-3 py-1.5 hover:bg-white/15" onClick={() => scroll(-1)} aria-label={t("list.prev")}>
             <ChevronLeft className="size-4" aria-hidden />
           </button>
-          <button type="button" className="rounded px-3 py-1.5 hover:bg-white/15" onClick={() => scroll(1)} aria-label="Next cars">
+          <button type="button" className="rounded px-3 py-1.5 hover:bg-white/15" onClick={() => scroll(1)} aria-label={t("list.next")}>
             <ChevronRight className="size-4" aria-hidden />
           </button>
           <button
@@ -73,13 +75,13 @@ export function ResultList({
             className="flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-semibold hover:bg-white/15 disabled:opacity-60 disabled:hover:bg-transparent"
             disabled={chosen.length < 2}
             onClick={() => setOpen(true)}
-            title={chosen.length < 2 ? "Tick Compare on 2 or 3 cars" : undefined}
+            title={chosen.length < 2 ? t("list.compareHint") : undefined}
           >
             <ArrowLeftRight className="size-4" aria-hidden />
-            <span aria-live="polite">Compare{chosen.length ? ` (${chosen.length})` : ""}</span>
+            <span aria-live="polite">{t("card.compare")}{chosen.length ? ` (${chosen.length})` : ""}</span>
           </button>
           {chosen.length > 0 && (
-            <button type="button" className="rounded px-2 py-1.5 hover:bg-white/15" onClick={() => setPicked([])} aria-label="Clear comparison">
+            <button type="button" className="rounded px-2 py-1.5 hover:bg-white/15" onClick={() => setPicked([])} aria-label={t("list.clear")}>
               <X className="size-4" aria-hidden />
             </button>
           )}
@@ -89,8 +91,8 @@ export function ResultList({
       <Dialog open={open && chosen.length > 1} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>Compare cars</DialogTitle>
-            <DialogDescription>Prices are AI estimates. Efficiency is the EPA combined rating.</DialogDescription>
+            <DialogTitle>{t("cmp.title")}</DialogTitle>
+            <DialogDescription>{t("cmp.desc")}</DialogDescription>
           </DialogHeader>
           <CompareTable cars={chosen} onRemove={toggle} />
         </DialogContent>
@@ -111,29 +113,30 @@ function CompareTable({ cars, onRemove }: { cars: CarResult[]; onRemove: (key: s
   // Highlight the best value in rows where "best" is unambiguous.
   const lowest = Math.min(...cars.map((c) => c.price_min ?? Infinity))
   const mostSeats = Math.max(...cars.map((c) => c.seats))
+  const v = (x: string) => t(`v.${x}` as Key)
   const bestMatch = Math.max(...cars.map((c) => c.match_score))
 
   const rows: { label: string; cell: (c: CarResult) => React.ReactNode; best?: (c: CarResult) => boolean }[] = [
-    { label: "Photo", cell: (c) => <PhotoCell car={c} /> },
+    { label: t("cmp.photo"), cell: (c) => <PhotoCell car={c} /> },
     {
-      label: "AI price estimate",
+      label: t("det.price"),
       cell: (c) => (
         <>
           {priceRange(c)}
-          {c.over_budget && <span className="block text-xs text-destructive">Above budget</span>}
+          {c.over_budget && <span className="block text-xs text-destructive">{t("card.aboveBudget")}</span>}
         </>
       ),
       best: (c) => c.price_min === lowest,
     },
-    { label: "Match", cell: (c) => `${c.match_score}%`, best: (c) => c.match_score === bestMatch },
-    { label: "Body", cell: (c) => c.body_type },
-    { label: "Efficiency", cell: efficiency },
-    { label: "Fuel", cell: (c) => c.fuel_type },
-    { label: "Drivetrain", cell: (c) => c.drivetrain },
-    { label: "Transmission", cell: (c) => c.transmission },
-    { label: "Seats", cell: (c) => c.seats, best: (c) => c.seats === mostSeats },
+    { label: t("cmp.match"), cell: (c) => `${c.match_score}%`, best: (c) => c.match_score === bestMatch },
+    { label: t("det.body"), cell: (c) => v(c.body_type) },
+    { label: t("card.efficiency"), cell: efficiency },
+    { label: t("card.fuel"), cell: (c) => v(c.fuel_type) },
+    { label: t("drive.label"), cell: (c) => c.drivetrain },
+    { label: t("trans.label"), cell: (c) => v(c.transmission) },
+    { label: t("seats.label"), cell: (c) => c.seats, best: (c) => c.seats === mostSeats },
     {
-      label: "Why it fits",
+      label: t("card.why"),
       cell: (c) => (
         <ul className="grid list-disc gap-1 pl-4 text-xs">
           {c.bullets.map((b) => (
@@ -143,7 +146,7 @@ function CompareTable({ cars, onRemove }: { cars: CarResult[]; onRemove: (key: s
       ),
     },
     {
-      label: "Listings",
+      label: t("cmp.listings"),
       cell: (c) => (
         <a
           href={listingsUrl(c)}
@@ -152,7 +155,7 @@ function CompareTable({ cars, onRemove }: { cars: CarResult[]; onRemove: (key: s
           className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
         >
           Cars.com <ExternalLink className="size-3.5" aria-hidden />
-          <span className="sr-only"> for {carName(c)} (opens in a new tab)</span>
+          <span className="sr-only"> {t("card.listingsFor", { name: carName(c) })}</span>
         </a>
       ),
     },
@@ -161,11 +164,11 @@ function CompareTable({ cars, onRemove }: { cars: CarResult[]; onRemove: (key: s
   return (
     <div className="-mx-2 overflow-x-auto px-2">
       <table className="w-full min-w-[560px] table-fixed border-collapse text-sm">
-        <caption className="sr-only">Side-by-side comparison of {cars.length} cars</caption>
+        <caption className="sr-only">{t("cmp.caption", { n: cars.length })}</caption>
         <thead>
           <tr>
             <th scope="col" className="w-28 sm:w-36">
-              <span className="sr-only">Attribute</span>
+              <span className="sr-only">{t("cmp.attribute")}</span>
             </th>
             {cars.map((c) => (
               <th key={c.car_key} scope="col" className="p-2 text-left align-top font-semibold">
@@ -175,7 +178,7 @@ function CompareTable({ cars, onRemove }: { cars: CarResult[]; onRemove: (key: s
                     type="button"
                     onClick={() => onRemove(c.car_key)}
                     className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    aria-label={`Remove ${carName(c)} from comparison`}
+                    aria-label={t("cmp.remove", { name: carName(c) })}
                   >
                     <X className="size-4" aria-hidden />
                   </button>
@@ -196,7 +199,7 @@ function CompareTable({ cars, onRemove }: { cars: CarResult[]; onRemove: (key: s
                   <td key={c.car_key} className={cn("p-2 align-top", best && "font-semibold text-primary")}>
                     {row.cell(c)}
                     {best && (
-                      <span className="sr-only"> (best)</span>
+                      <span className="sr-only"> {t("cmp.best")}</span>
                     )}
                     {best && <Check className="ml-1 inline size-3.5" aria-hidden />}
                   </td>

@@ -6,27 +6,29 @@ import { arcColor } from "@/components/CarCard"
 import { ResultList } from "@/components/ResultList"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { LANGS, useI18n, type Lang } from "@/i18n"
 import { getRankings } from "@/lib/api"
 import type { RankingsData } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-const monthYear = (iso: string) =>
-  new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" })
-
-// "Top 10 new SUVs under $40,000" -> "New SUVs under $40,000", where a "TOP 10" label is already shown
-const short = (title: string) => title.replace(/^Top 10 (.)/, (_, c: string) => c.toUpperCase())
+const monthYear = (iso: string, locale: string) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString(locale, { month: "long", year: "numeric" })
 
 /** /rankings: the 10 static top-10 lists. /rankings/:slug: one list, with the app's cards, compare and favorites. */
 export default function Rankings() {
   const { slug } = useParams()
-  const [data, setData] = useState<RankingsData | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
+  const { lang, t } = useI18n()
+  // Tagged with its language so a language switch shows the skeleton until that language's file arrives
+  const [got, setGot] = useState<{ lang: Lang; data: RankingsData | null }>()
   useEffect(() => {
-    getRankings().then(setData, (e: unknown) => setError(e instanceof Error ? e.message : "Couldn't load the rankings."))
-  }, [])
+    getRankings(lang).then(
+      (data) => setGot({ lang, data }),
+      () => setGot({ lang, data: null }),
+    )
+  }, [lang])
+  const data = got?.lang === lang ? got.data : undefined
 
-  if (error) return <p role="alert">{error}</p>
+  if (data === null) return <p role="alert">{t("rank.error")}</p>
   if (!data)
     return (
       <div className="grid gap-5" aria-busy>
@@ -39,7 +41,7 @@ export default function Rankings() {
       </div>
     )
 
-  const updated = `Updated ${monthYear(data.updated)} · Ranked by AI from EPA vehicle data · Prices are AI estimates`
+  const updated = t("rank.updated", { date: monthYear(data.updated, LANGS[lang].locale) })
   const list = slug ? data.lists.find((l) => l.slug === slug) : null
   if (slug && !list) return <Navigate to="/rankings" replace />
 
@@ -47,7 +49,7 @@ export default function Rankings() {
     return (
       <div className="grid gap-6">
         <div>
-          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">Rankings</h1>
+          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">{t("rank.title")}</h1>
           <p className="text-sm font-light text-muted-foreground">{updated}</p>
         </div>
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -62,7 +64,7 @@ export default function Rankings() {
                 >
                   <div className="relative h-36 shrink-0 overflow-hidden">
                     <div aria-hidden className="absolute -top-16 -left-10 h-[200px] w-[80%] rounded-br-[200px] bg-[var(--c)]" />
-                    <span className="absolute top-4 left-5 text-[13px] font-extrabold tracking-[2px] text-white">TOP 10</span>
+                    <span className="absolute top-4 left-5 text-[13px] font-extrabold tracking-[2px] text-white">{t("rank.top10")}</span>
                     {top?.image ? (
                       <img
                         src={top.image.url}
@@ -75,7 +77,7 @@ export default function Rankings() {
                     )}
                   </div>
                   <div className="grid gap-1 px-5 pt-2 pb-5">
-                    <h2 className="text-base leading-tight font-extrabold">{short(l.title)}</h2>
+                    <h2 className="text-base leading-tight font-extrabold">{l.short}</h2>
                     <p className="truncate text-xs font-light text-muted-foreground">
                       #1 {top ? `${top.year} ${top.make} ${top.model}` : ""}
                     </p>
@@ -94,18 +96,18 @@ export default function Rankings() {
       <div className="flex flex-wrap items-center gap-4">
         <div className="mr-auto grid gap-1">
           <Link to="/rankings" className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="size-3.5" aria-hidden /> All rankings
+            <ArrowLeft className="size-3.5" aria-hidden /> {t("rank.all")}
           </Link>
           <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">{list.title}</h1>
           <p className="max-w-2xl text-sm font-light text-muted-foreground">{list.intro}</p>
         </div>
         <Button asChild className="h-14 rounded-[22px] px-6 text-base font-bold shadow-[0_10px_30px_#d42e2e40]">
           <Link to={personalize}>
-            <SlidersHorizontal aria-hidden /> Personalize
+            <SlidersHorizontal aria-hidden /> {t("rank.personalize")}
           </Link>
         </Button>
       </div>
-      <nav aria-label="Other rankings" className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+      <nav aria-label={t("rank.other")} className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
         {data.lists.map((l) => (
           <Link
             key={l.slug}
@@ -116,7 +118,7 @@ export default function Rankings() {
               l.slug === list.slug && "bg-primary text-primary-foreground hover:text-primary-foreground",
             )}
           >
-            {short(l.title)}
+            {l.short}
           </Link>
         ))}
       </nav>

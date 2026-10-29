@@ -4,26 +4,28 @@ import { ResultList } from "@/components/ResultList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { MAX_FAVORITES, useAccount } from "@/hooks/account"
+import { useI18n } from "@/i18n"
 
 export default function Favorites() {
   const { enabled, user, favorites, favoritesLoading, openAuth } = useAccount()
+  const { t } = useI18n()
 
   let body
-  if (!enabled) body = <p>Accounts aren't configured on this deployment.</p>
+  if (!enabled) body = <p>{t("fav.disabled")}</p>
   else if (!user)
     body = (
       <>
-        <p>Sign in to see the cars you've saved.</p>
-        <Button onClick={openAuth}>Sign in</Button>
+        <p>{t("fav.signIn")}</p>
+        <Button onClick={openAuth}>{t("nav.signIn")}</Button>
       </>
     )
-  else if (favoritesLoading && favorites.length === 0) body = <p>Loading your favorites…</p>
+  else if (favoritesLoading && favorites.length === 0) body = <p>{t("fav.loading")}</p>
   else if (favorites.length === 0)
     body = (
       <>
-        <p>No favorites yet. Tap the heart on any result to save it here.</p>
+        <p>{t("fav.empty")}</p>
         <Button asChild>
-          <Link to="/">Find a car</Link>
+          <Link to="/">{t("fav.find")}</Link>
         </Button>
       </>
     )
@@ -31,10 +33,8 @@ export default function Favorites() {
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">My favorites</h1>
-        <p className="text-sm font-light text-muted-foreground">
-          Up to {MAX_FAVORITES} cars. Saving more replaces your oldest one.
-        </p>
+        <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">{t("fav.title")}</h1>
+        <p className="text-sm font-light text-muted-foreground">{t("fav.sub", { max: MAX_FAVORITES })}</p>
       </div>
       {body ? (
         <Card>

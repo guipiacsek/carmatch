@@ -5,11 +5,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useI18n } from "@/i18n"
 import { getSupabase } from "@/lib/supabase"
 
 type Mode = "signin" | "signup"
 
 export function AuthDialog({ open, onClose }: { open: boolean; onClose: (keepPending: boolean) => void }) {
+  const { t } = useI18n()
   const [mode, setMode] = useState<Mode>("signin")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -46,11 +48,9 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: (keepPen
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{awaitingConfirm ? "Check your inbox" : "Save cars you love"}</DialogTitle>
+          <DialogTitle>{awaitingConfirm ? t("auth.checkInbox") : t("auth.title")}</DialogTitle>
           <DialogDescription>
-            {awaitingConfirm
-              ? `We sent a confirmation link to ${email}. Open it to finish signing up, and we'll save the car you picked.`
-              : "Sign in or create a free account to keep up to 10 favorites."}
+            {awaitingConfirm ? t("auth.sent", { email }) : t("auth.desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -58,12 +58,12 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: (keepPen
           <form onSubmit={submit} className="grid gap-4">
             <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
               <TabsList className="w-full">
-                <TabsTrigger value="signin">Sign in</TabsTrigger>
-                <TabsTrigger value="signup">Create account</TabsTrigger>
+                <TabsTrigger value="signin">{t("auth.signIn")}</TabsTrigger>
+                <TabsTrigger value="signup">{t("auth.create")}</TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="grid gap-2">
-              <Label htmlFor="auth-email">Email</Label>
+              <Label htmlFor="auth-email">{t("auth.email")}</Label>
               <Input
                 id="auth-email"
                 type="email"
@@ -74,7 +74,7 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: (keepPen
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="auth-password">Password</Label>
+              <Label htmlFor="auth-password">{t("auth.password")}</Label>
               <Input
                 id="auth-password"
                 type="password"
@@ -84,7 +84,7 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: (keepPen
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              {mode === "signup" && <p className="text-xs text-muted-foreground">At least 8 characters.</p>}
+              {mode === "signup" && <p className="text-xs text-muted-foreground">{t("auth.min8")}</p>}
             </div>
             {error && (
               <p role="alert" className="text-sm text-destructive">
@@ -92,7 +92,7 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: (keepPen
               </p>
             )}
             <Button type="submit" size="lg" disabled={busy}>
-              {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+              {busy ? t("auth.wait") : mode === "signin" ? t("auth.signIn") : t("auth.create")}
             </Button>
           </form>
         )}

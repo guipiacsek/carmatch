@@ -5,24 +5,26 @@ import { Link, useParams } from "react-router-dom"
 import { ResultList } from "@/components/ResultList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { useI18n, type Key } from "@/i18n"
 import { ApiError, getSharedResults } from "@/lib/api"
 import type { RecommendResponse } from "@/lib/types"
 
 export default function Shared() {
   const { shareId = "" } = useParams()
   const [data, setData] = useState<RecommendResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n()
+  const [error, setError] = useState<Key | null>(null)
 
   useEffect(() => {
     getSharedResults(shareId).then(setData, (e: unknown) =>
-      setError(e instanceof ApiError && e.status !== 0 ? e.message : "Couldn't load these results. Please try again."),
+      setError(e instanceof ApiError && e.status === 404 ? "sh.expired" : "sh.error"),
     )
   }, [shareId])
 
   const startLink = (
     <Button asChild>
       <Link to="/">
-        <Search aria-hidden /> Find cars for you
+        <Search aria-hidden /> {t("sh.find")}
       </Link>
     </Button>
   )
@@ -31,8 +33,8 @@ export default function Shared() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">Shared car matches</h1>
-          <p className="text-sm font-light text-muted-foreground">Someone shared these CarMatch results with you.</p>
+          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">{t("sh.title")}</h1>
+          <p className="text-sm font-light text-muted-foreground">{t("sh.sub")}</p>
         </div>
         {startLink}
       </div>
@@ -40,12 +42,12 @@ export default function Shared() {
         {error && (
           <Card>
             <CardContent className="grid justify-items-start gap-4">
-              <p role="alert">{error}</p>
+              <p role="alert">{t(error)}</p>
               {startLink}
             </CardContent>
           </Card>
         )}
-        {!data && !error && <p className="text-sm font-light text-muted-foreground">Loading shared results…</p>}
+        {!data && !error && <p className="text-sm font-light text-muted-foreground">{t("sh.loading")}</p>}
         {data && (
           <div className="grid gap-6">
             {data.notice && (

@@ -2,10 +2,12 @@ import { CarFront, Check } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { Progress } from "@/components/ui/progress"
+import { useI18n } from "@/i18n"
 import { cn } from "@/lib/utils"
 
 /** Shown while a search runs. Steps advance on a clock until real progress (cars found so far) overtakes it. */
 export function LoadingScreen({ found, total }: { found: number; total: number }) {
+  const { t } = useI18n()
   const [secs, setSecs] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setSecs((s) => s + 0.25), 250)
@@ -13,10 +15,10 @@ export function LoadingScreen({ found, total }: { found: number; total: number }
   }, [])
 
   const steps = [
-    { label: "Filtering 35,000+ EPA vehicles", done: secs >= 1 || found > 0 },
-    { label: "AI is ranking your best fits", done: found > 0 },
-    { label: "Estimating prices and writing reasons", done: found >= total * 0.6 },
-    { label: "Lining up photos", done: found >= total },
+    { label: t("load.step1"), done: secs >= 1 || found > 0 },
+    { label: t("load.step2"), done: found > 0 },
+    { label: t("load.step3"), done: found >= total * 0.6 },
+    { label: t("load.step4"), done: found >= total },
   ]
   // Eases toward 90% over ~6s (a typical search), then real progress takes over.
   const progress = Math.max(90 * (1 - Math.exp(-secs / 2.5)), (found / total) * 100)
@@ -26,7 +28,7 @@ export function LoadingScreen({ found, total }: { found: number; total: number }
     <div
       className="relative grid min-h-[420px] overflow-hidden rounded-[26px] bg-card md:grid-cols-2"
       role="status"
-      aria-label="Finding your matches"
+      aria-label={t("load.label")}
     >
       <div aria-hidden className="absolute -top-20 -left-[60px] h-[300px] w-[calc(100%+60px)] rounded-br-[300px] bg-primary md:h-[calc(100%+160px)] md:w-[62%] md:rounded-br-[520px]" />
       <div className="relative flex min-h-[220px] flex-col justify-between p-7 text-white">
@@ -34,8 +36,8 @@ export function LoadingScreen({ found, total }: { found: number; total: number }
         <div className="grid gap-3">
           <CarFront className="size-12 motion-safe:animate-bounce" aria-hidden />
           <h2 className="text-[clamp(26px,3vw,40px)] leading-[1.05]">
-            <span className="block font-extralight uppercase">Finding</span>
-            <span className="block font-extrabold">your matches</span>
+            <span className="block font-extralight uppercase">{t("load.finding")}</span>
+            <span className="block font-extrabold">{t("load.yours")}</span>
           </h2>
         </div>
       </div>
@@ -53,14 +55,14 @@ export function LoadingScreen({ found, total }: { found: number; total: number }
                 {s.done ? <Check className="size-4" aria-hidden /> : i + 1}
               </span>
               {s.label}
-              <span className="sr-only">{s.done ? " (done)" : i === current ? " (in progress)" : ""}</span>
+              <span className="sr-only">{s.done ? ` ${t("load.done")}` : i === current ? ` ${t("load.now")}` : ""}</span>
             </li>
           ))}
         </ol>
         <div className="grid gap-2">
-          <Progress value={progress} className="h-2" aria-label="Search progress" />
+          <Progress value={progress} className="h-2" aria-label={t("load.progress")} />
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {found ? `${found} of ${total} cars found` : "Usually takes about 5 seconds"}
+            {found ? t("load.found", { n: found, total }) : t("load.usually")}
           </p>
         </div>
       </div>
