@@ -40,10 +40,14 @@ def test_classification() -> None:
     assert classify_fuel("FFV", "Gasoline or E85") == "Gas"
     assert classify_fuel("FCV", "Hydrogen") is None
     assert classify_drive("4-Wheel or All-Wheel Drive", "") == {"AWD", "4WD"}
-    assert classify_body("Compact Cars", "Civic", "Civic") == {"Sedan", "Compact"}
-    assert classify_body("Compact Cars", "Civic 5Dr", "Civic") == {"Hatchback", "Compact"}
-    assert classify_body("Two Seaters", "MX-5 Miata Roadster", "MX-5") == {"Convertible"}
-    assert classify_body("Vans, Cargo Type", "Transit", "Transit") == frozenset()
+    assert classify_body("Compact Cars", "Civic", four_door=True) == {"Sedan", "Compact"}
+    assert classify_body("Large Cars", "Civic 5Dr", hatch=True) == {"Hatchback"}
+    assert classify_body("Minicompact Cars", "BRZ", two_door=True) == {"Coupe", "Compact"}
+    assert classify_body("Compact Cars", "M440i Gran Coupe", four_door=True) == {"Sedan", "Compact"}
+    assert classify_body("Subcompact Cars", "430i Convertible", two_door=True) == {"Convertible", "Compact"}
+    assert classify_body("Midsize Cars", "Golf SportWagen") == {"Wagon"}  # no volume data: name hints
+    assert classify_body("Two Seaters", "MX-5 Miata Roadster") == {"Convertible"}
+    assert classify_body("Vans, Cargo Type", "Transit") == frozenset()
 
 
 def test_candidates_are_grouped_diverse_and_capped() -> None:

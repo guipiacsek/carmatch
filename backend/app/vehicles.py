@@ -81,42 +81,12 @@ _NAME_HINTS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"hatch|sportback|\b[35]-?door|\b[35]dr\b|liftback", re.I), "Hatchback"),
     (re.compile(r"wagon|allroad|sportwagen|avant|estate", re.I), "Wagon"),
 ]
-# Well-known hatchbacks the EPA files under plain car classes.
-_HATCH_MODELS = {
-    "fit",
-    "golf",
-    "gti",
-    "prius",
-    "bolt",
-    "bolt ev",
-    "leaf",
-    "yaris",
-    "fiesta",
-    "focus",
-    "versa note",
-    "sonic",
-    "accent",
-    "rio",
-    "veloster",
-    "mazda3",
-    "impreza",
-    "i3",
-    "mini cooper",
-    "spark",
-    "soul",
-    "kona electric",
-    "id.3",
-    "fiat 500",
-    "500",
-    "500e",
-    "ioniq",
-    "ioniq 5",
-    "niro",
-    "crosstrek",
-}
 
 
-def classify_body(vclass: str, model: str, base_model: str) -> frozenset[str]:
+def classify_body(
+    vclass: str, model: str, two_door: bool = False, four_door: bool = False, hatch: bool = False
+) -> frozenset[str]:
+    """two_door/four_door/hatch come from EPA interior volumes (pv2/pv4/hpv); model-name hints fill gaps."""
     vc = vclass.lower()
     if "pickup" in vc:
         return frozenset({"Truck"})
@@ -130,13 +100,18 @@ def classify_body(vclass: str, model: str, base_model: str) -> frozenset[str]:
         return frozenset()  # cargo vans, special purpose vehicles
 
     hinted = {body for pattern, body in _NAME_HINTS if pattern.search(model)}
-    if base_model.lower() in _HATCH_MODELS:
-        hinted.add("Hatchback")
     if vc == "two seaters":
         return frozenset(hinted & {"Convertible"} or {"Coupe"})
-    bodies = set(hinted)
-    if not bodies:
-        bodies.add("Sedan")
+    if two_door or four_door or hatch:  # measured body style beats names like "Gran Coupe" (a 4-door)
+        bodies = hinted & {"Convertible", "Wagon"}
+        if hatch:
+            bodies.add("Hatchback")
+        if two_door and "Convertible" not in bodies:
+            bodies.add("Coupe")
+        if four_door and "Wagon" not in bodies:
+            bodies.add("Sedan")
+    else:
+        bodies = hinted or {"Sedan"}
     if vc in ("minicompact cars", "subcompact cars", "compact cars"):
         bodies.add("Compact")
     return frozenset(bodies)
@@ -174,7 +149,9 @@ def parse_rows(rows: "csv.DictReader[str]") -> list[Vehicle]:
         if year is None or year < MIN_YEAR:
             continue
         fuel = classify_fuel(r["atvType"], r["fuelType"])
-        bodies = classify_body(r["VClass"], r["model"], r["baseModel"])
+        bodies = classify_body(
+            r["VClass"], r["model"], bool(_int(r["pv2"])), bool(_int(r["pv4"])), bool(_int(r["hpv"]))
+        )
         drive = classify_drive(r["drive"], r["VClass"])
         if fuel is None or not bodies or not drive:
             continue

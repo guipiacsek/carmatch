@@ -15,6 +15,10 @@ COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 _cache: dict[str, CarImage | None] = {}  # shortcut: unbounded per-process cache, fine for a few thousand models
 
 
+# Words EPA model names carry that photo titles usually don't ("F150 Pickup" vs "Ford F-150").
+_GENERIC_WORDS = {"pickup", "hybrid", "plug-in", "electric", "diesel", "2wd", "4wd", "awd", "fwd", "rwd"}
+
+
 def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
@@ -23,7 +27,7 @@ def _plain(s: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", s)).strip()
 
 
-async def _search(client: httpx.AsyncClient, query: str, model: str) -> CarImage | None:
+async def _search(client: httpx.AsyncClient, query: str, model: str, year: int) -> CarImage | None:
     params = {
         "action": "query",
         "format": "json",
@@ -40,11 +44,13 @@ async def _search(client: httpx.AsyncClient, query: str, model: str) -> CarImage
     resp = await client.get(COMMONS_API, params=params, timeout=6)
     resp.raise_for_status()
     pages = sorted(resp.json().get("query", {}).get("pages", []), key=lambda pg: pg.get("index", 0))
-    want = _norm(model.split(" Plug-in")[0].removesuffix(" Hybrid").removesuffix(" Electric").removesuffix(" Diesel"))
+    want = _norm(" ".join(w for w in model.split() if w.lower() not in _GENERIC_WORDS)) or _norm(model)
     for page in pages:
         info = (page.get("imageinfo") or [{}])[0]
         if info.get("mime") not in ("image/jpeg", "image/png", "image/webp") or want not in _norm(page["title"]):
             continue
+        if year and any(abs(int(y) - year) > 6 for y in re.findall(r"(?<!\d)(?:19|20)\d{2}(?!\d)", page["title"])):
+            continue  # e.g. a 1958 Land Cruiser for a 2027 Land Cruiser
         meta = info.get("extmetadata", {})
         return CarImage(
             url=info.get("thumburl") or info["url"],
@@ -61,7 +67,7 @@ async def find_image(client: httpx.AsyncClient, year: int, make: str, model: str
         key = query.lower()
         if key not in _cache:
             try:
-                _cache[key] = await _search(client, query, model)
+                _cache[key] = await _search(client, query, model, year)
             except (httpx.HTTPError, KeyError, ValueError) as e:
                 log.warning("commons lookup failed for %r: %s", query, e)
                 return None  # transient: don't cache the miss

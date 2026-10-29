@@ -22,7 +22,7 @@ def veh(
     trans: str = "auto",
     mpg: int = 30,
 ) -> Vehicle:
-    bodies = classify_body(vclass, model, model)
+    bodies = classify_body(vclass, model)
     return Vehicle(
         id=i,
         year=year,
