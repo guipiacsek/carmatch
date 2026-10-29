@@ -3,8 +3,8 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from app.candidates import build_candidates
-from app.llm import assemble, build_messages, parse_picks, strict_schema
+from app.candidates import TARGET_RESULTS, build_candidates
+from app.llm import BATCH_KEEP, assemble, build_messages, parse_picks, split_batches, strict_schema, validate_batch
 from app.models import LLMPick
 
 from .conftest import fleet, prefs
@@ -76,11 +76,11 @@ def test_assemble_drops_invalid_ids_and_fills_to_seven() -> None:
     picks = [pick("c3", 1), pick("c999", 2), pick("c3", 3), pick("c5", 4, seats=1), pick("c1", 5)]
     results = assemble(p, cands, picks)
     keys = {c.id: c.key for c in cands}
-    assert len(results) == 7
+    assert len(results) == TARGET_RESULTS
     assert [r.car_key for r in results[:2]] == [keys["c3"], keys["c1"]]  # c999 unknown, dup c3, c5 too few seats
-    assert len({r.car_key for r in results}) == 7
-    assert len({(r.make, r.model) for r in results}) == 7  # no model repeated across years
-    assert [r.rank for r in results] == list(range(1, 8))
+    assert len({r.car_key for r in results}) == TARGET_RESULTS
+    assert len({(r.make, r.model) for r in results}) == TARGET_RESULTS  # no model repeated across years
+    assert [r.rank for r in results] == list(range(1, TARGET_RESULTS + 1))
     assert results[2].price_min is None  # filled from data, no invented price
 
 
@@ -102,7 +102,7 @@ def test_assemble_without_llm_is_grounded() -> None:
     p = prefs(body_types=["SUV"])
     cands, _ = build_candidates(vs, p, fuels(vs))
     results = assemble(p, cands, [])
-    assert len(results) == 7 and all(r.price_min is None for r in results)
+    assert len(results) == TARGET_RESULTS and all(r.price_min is None for r in results)
     assert all(len(r.bullets) == 3 for r in results)
 
 
@@ -131,7 +131,7 @@ def test_rank_with_llm_request_and_response(monkeypatch: pytest.MonkeyPatch) -> 
 
     picks = asyncio.run(run())
     assert [x.id for x in picks] == [f"c{i}" for i in range(1, 10)]
-    assert sent["response_format"]["json_schema"]["schema"]["properties"]["picks"]["maxItems"] == 9  # type: ignore[index]
+    assert sent["response_format"]["json_schema"]["schema"]["properties"]["picks"]["maxItems"] == 4  # type: ignore[index]
     assert sent["model"] == "gpt-4.1-mini" and sent["auth"] == "Bearer sk-test"
     fmt = sent["response_format"]
     assert isinstance(fmt, dict) and fmt["json_schema"]["strict"] is True
@@ -145,3 +145,27 @@ def test_backfill_never_claims_seats_it_cannot_back_up() -> None:
     assert assemble(p, cands, []) == []  # but without an LLM estimate none are shown as 7-seaters
     results = assemble(p, cands, [pick("c1", 1, seats=7)])
     assert [r.seats for r in results] == [7]
+
+
+def test_batches_split_fairly_and_never_share_a_model() -> None:
+    vs = fleet()
+    p = prefs(body_types=["SUV"])
+    cands, _ = build_candidates(vs, p, fuels(vs))
+    batches = split_batches(cands)
+    assert len(batches) == 3
+    models = [{(c.make, c.model) for c in b} for b in batches]
+    assert not (models[0] & models[1]) and not (models[1] & models[2]) and not (models[0] & models[2])
+    assert sum(len(b) for b in batches) == len(cands)
+    assert batches[0][0].id == "c1"  # the strongest candidate seeds the first batch
+
+
+def test_validate_batch_keeps_three_and_dedupes_across_batches() -> None:
+    vs = fleet()
+    p = prefs(body_types=["SUV"])
+    cands, _ = build_candidates(vs, p, fuels(vs))
+    used: set[tuple[str, str]] = set()
+    first = validate_batch(p, cands, [pick(f"c{i}", i) for i in range(1, 5)], used)
+    assert len(first) == BATCH_KEEP
+    again = validate_batch(p, cands, [pick(f"c{i}", i) for i in range(1, 5)], used)
+    shown = {(r.make, r.model) for r in first}
+    assert not any((r.make, r.model) in shown for r in again)

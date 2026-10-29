@@ -4,11 +4,23 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import main
+from app.candidates import TARGET_RESULTS
 from app.models import CarImage
 from app.store import MemoryRateLimiter, _mem_cache, memory_limiter
 from app.vehicles import catalog
 
 from .conftest import fleet
+
+
+def stream(resp: object) -> list[dict[str, object]]:
+    import json
+
+    return [json.loads(line) for line in resp.text.splitlines() if line]  # type: ignore[attr-defined]
+
+
+def done(resp: object) -> dict[str, object]:
+    return stream(resp)[-1]
+
 
 BODY = {"year_min": 2015, "year_max": 2024, "condition": "used", "budget": 30000, "body_types": ["SUV"]}
 
@@ -42,16 +54,21 @@ def test_health(client: TestClient) -> None:
     assert client.get("/health").json() == {"status": "ok", "catalog_loaded": True}
 
 
-def test_recommend_returns_seven_grounded_results(client: TestClient) -> None:
+def test_recommend_streams_meta_cars_then_done(client: TestClient) -> None:
     r = client.post("/api/recommend", json=BODY)
-    assert r.status_code == 200
-    data = r.json()
-    assert len(data["results"]) == 7 and data["cached"] is False
-    assert all(c["body_type"] == "SUV" for c in data["results"])
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/x-ndjson")
+    events = stream(r)
+    assert events[0]["type"] == "meta" and events[-1]["type"] == "done"
+    streamed = [c for e in events if e["type"] == "cars" for c in e["cars"]]  # type: ignore[union-attr]
+    final = events[-1]["results"]
+    assert isinstance(final, list) and len(final) == TARGET_RESULTS and events[-1]["cached"] is False
+    assert {c["car_key"] for c in streamed} == {c["car_key"] for c in final}
+    assert all(c["body_type"] == "SUV" for c in final)
+    assert [c["rank"] for c in final] == list(range(1, TARGET_RESULTS + 1))
 
 
 def test_rate_limit_429_and_cache_hits_are_free(client: TestClient) -> None:
-    headers = {"X-Forwarded-For": "6.6.6.6, 10.0.0.1"}  # rightmost entry is the one our proxy saw
+    headers = {"X-Forwarded-For": "6.6.6.6, 9.9.9.9"}  # rightmost entry is the one our proxy saw
     for budget in (20000, 21000, 22000):  # limit is 3/hour in tests
         assert client.post("/api/recommend", json={**BODY, "budget": budget}, headers=headers).status_code == 200
     r = client.post("/api/recommend", json={**BODY, "budget": 23000}, headers=headers)
@@ -59,11 +76,11 @@ def test_rate_limit_429_and_cache_hits_are_free(client: TestClient) -> None:
     assert 3500 < int(r.headers["Retry-After"]) <= 3600
     # Same preferences as an earlier search: served from cache, not counted.
     r = client.post("/api/recommend", json={**BODY, "budget": 20000}, headers=headers)
-    assert r.status_code == 200 and r.json()["cached"] is True
+    assert r.status_code == 200 and done(r)["cached"] is True
     # Spoofing the left part of X-Forwarded-For doesn't reset the limit.
-    spoofed = {"X-Forwarded-For": "1.1.1.1, 10.0.0.1"}
+    spoofed = {"X-Forwarded-For": "1.1.1.1, 9.9.9.9"}
     assert client.post("/api/recommend", json={**BODY, "budget": 24000}, headers=spoofed).status_code == 429
-    other = {"X-Forwarded-For": "10.0.0.2"}
+    other = {"X-Forwarded-For": "8.8.4.4"}
     assert client.post("/api/recommend", json={**BODY, "budget": 24000}, headers=other).status_code == 200
 
 
@@ -88,3 +105,48 @@ def test_image_endpoint_validates_and_caches(client: TestClient) -> None:
     assert client.get("/api/image", params={"year": 2020, "make": "Nope", "model": "X"}).status_code == 404
     assert client.get("/api/image", params={"year": 1800, "make": "Toyota", "model": "RAV4"}).status_code == 422
     assert client.get("/api/image", params={"year": 2020, "make": "Toyota", "model": "<script>"}).status_code == 422
+
+
+def test_parallel_batches_stream_and_survive_one_failure(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    import httpx
+
+    from app import llm
+    from app.models import LLMPick
+
+    calls: list[int] = []
+
+    async def fake_rank(_http: object, _p: object, batch: list[llm.Candidate]) -> list[LLMPick]:
+        calls.append(len(batch))
+        if len(calls) == 2:
+            raise httpx.ConnectError("boom")
+        return [
+            LLMPick(
+                id=c.id,
+                seats=7,
+                estimated_price_min=20000,
+                estimated_price_max=25000,
+                rank=i + 1,
+                match_score=90 - i,
+                bullets=["a", "b", "c"],
+            )
+            for i, c in enumerate(batch[:4])
+        ]
+
+    monkeypatch.setattr(main, "settings", replace(main.settings, openai_api_key="sk-test"))
+    monkeypatch.setattr(llm, "rank_with_llm", fake_rank)
+    events = stream(client.post("/api/recommend", json={**BODY, "budget": 33333}))
+    car_events = [e for e in events if e["type"] == "cars"]
+    assert len(calls) == 3
+    # two successful batches of 3, then one data-only backfill event for the failed batch's slots
+    assert [len(e["cars"]) for e in car_events] == [3, 3, 3]  # type: ignore[arg-type]
+    final = events[-1]["results"]
+    assert isinstance(final, list) and len(final) == TARGET_RESULTS
+    assert sum(1 for c in final if c["price_min"] is None) == 3
+    assert final[0]["price_min"] is not None  # priced, high-scoring picks rank above data-only backfill
+
+
+def test_client_ip_skips_render_internal_hops(client: TestClient) -> None:
+    ip = client.get("/api/client-ip", headers={"X-Forwarded-For": "1.1.1.1, 8.8.8.8, 10.199.143.70"}).json()
+    assert ip["ip"] == "8.8.8.8"  # 10.x is Render's LB; 1.1.1.1 is client-supplied and ignored

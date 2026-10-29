@@ -73,3 +73,8 @@ export interface RecommendResponse {
   notice: string | null
   cached: boolean
 }
+
+export type RecommendEvent =
+  | { type: "meta"; relaxed: string[]; cached: boolean }
+  | { type: "cars"; cars: CarResult[] }
+  | ({ type: "done" } & RecommendResponse)

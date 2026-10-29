@@ -91,10 +91,10 @@ class LLMPick(BaseModel):
     seats: int = Field(ge=1, le=15)
     estimated_price_min: int = Field(ge=0)
     estimated_price_max: int = Field(ge=0)
-    rank: int = Field(ge=1, le=9)
+    rank: int = Field(ge=1, le=10)  # the per-call schema narrows this to the picks requested
     match_score: int = Field(ge=0, le=100)
     bullets: list[str] = Field(min_length=3, max_length=3)
 
 
 class LLMResponse(BaseModel):
-    picks: list[LLMPick] = Field(min_length=1, max_length=9)
+    picks: list[LLMPick] = Field(min_length=1, max_length=10)

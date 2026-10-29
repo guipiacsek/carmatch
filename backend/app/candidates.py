@@ -8,7 +8,7 @@ from .models import MAX_YEAR, MIN_YEAR, Preferences
 from .vehicles import Vehicle
 
 MAX_CANDIDATES = 40
-TARGET_RESULTS = 7
+TARGET_RESULTS = 9  # 3 batches x 3 kept
 
 LUXURY_MAKES = {
     "Acura",

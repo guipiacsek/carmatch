@@ -1,5 +1,5 @@
 import { supabase } from "./supabase"
-import type { CarImage, CarResult, Preferences, RecommendResponse } from "./types"
+import type { CarImage, CarResult, Preferences, RecommendEvent, RecommendResponse } from "./types"
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000").replace(/\/$/, "")
 
@@ -14,7 +14,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function send(path: string, init?: RequestInit): Promise<Response> {
   let res: Response
   try {
     res = await fetch(`${API_URL}${path}`, init)
@@ -27,21 +27,58 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const retry = Number(res.headers.get("Retry-After"))
     throw new ApiError(detail, res.status, Number.isFinite(retry) && retry > 0 ? retry : null)
   }
-  return res.json() as Promise<T>
+  return res
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await send(path, init)).json() as Promise<T>
+}
+
+// Same order the backend uses for the final list: within budget first, then best match.
+export function sortCars(cars: CarResult[]): CarResult[] {
+  return [...cars].sort((a, b) => Number(a.over_budget) - Number(b.over_budget) || b.match_score - a.match_score)
 }
 
 export async function getMakes(): Promise<string[]> {
   return (await request<{ makes: string[] }>("/api/makes")).makes
 }
 
-export async function recommend(prefs: Preferences, signal?: AbortSignal): Promise<RecommendResponse> {
+// The backend streams one NDJSON line per event: meta, a "cars" line per finished GPT batch, then "done".
+export async function recommend(
+  prefs: Preferences,
+  onCars: (cars: CarResult[]) => void,
+  signal?: AbortSignal,
+): Promise<RecommendResponse> {
   const token = (await supabase?.auth.getSession())?.data.session?.access_token
-  return request<RecommendResponse>("/api/recommend", {
+  const res = await send("/api/recommend", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(prefs),
     signal,
   })
+  const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
+  let buffer = ""
+  let shown: CarResult[] = []
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += value
+    let nl: number
+    while ((nl = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, nl).trim()
+      buffer = buffer.slice(nl + 1)
+      if (!line) continue
+      const event = JSON.parse(line) as RecommendEvent
+      if (event.type === "cars") {
+        shown = sortCars([...shown, ...event.cars])
+        onCars(shown)
+      } else if (event.type === "done") {
+        const { type: _type, ...data } = event
+        return data
+      }
+    }
+  }
+  throw new ApiError("The connection dropped before all results arrived. Please try again.", 0)
 }
 
 // Render's free tier sleeps when idle: wake it on page load so it's up by the time the wizard is done.

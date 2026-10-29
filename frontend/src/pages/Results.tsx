@@ -9,7 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ApiError, recommend } from "@/lib/api"
 import { hasSavedPrefs, loadPrefs } from "@/lib/preferences"
 import { KEYS, load, save } from "@/lib/storage"
-import type { RecommendResponse } from "@/lib/types"
+import type { CarResult, RecommendResponse } from "@/lib/types"
+
+const MAX_RESULTS = 9 // backend TARGET_RESULTS: 3 batches x 3
 
 interface Stored {
   prefs: string
@@ -27,8 +29,10 @@ function friendlyError(e: unknown): string {
 
 export default function Results() {
   const [state, setState] = useState<
-    { kind: "loading" } | { kind: "error"; message: string; retryable: boolean } | { kind: "done"; data: RecommendResponse }
-  >({ kind: "loading" })
+    | { kind: "loading"; cars: CarResult[] } // cars stream in as each GPT batch finishes
+    | { kind: "error"; message: string; retryable: boolean }
+    | { kind: "done"; data: RecommendResponse }
+  >({ kind: "loading", cars: [] })
 
   const run = useCallback((signal?: AbortSignal) => {
     const prefs = loadPrefs()
@@ -38,8 +42,8 @@ export default function Results() {
       setState({ kind: "done", data: stored.data })
       return
     }
-    setState({ kind: "loading" })
-    recommend(prefs, signal).then(
+    setState({ kind: "loading", cars: [] })
+    recommend(prefs, (cars) => setState({ kind: "loading", cars }), signal).then(
       (data) => {
         save(KEYS.results, { prefs: key, data } satisfies Stored)
         setState({ kind: "done", data })
@@ -80,20 +84,31 @@ export default function Results() {
       <div aria-live="polite" aria-busy={state.kind === "loading"}>
         {state.kind === "loading" && (
           <div className="grid gap-4">
-            <p className="text-sm text-muted-foreground">Finding cars that fit you. This takes a few seconds…</p>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }, (_, i) => (
-                <Card key={i} className="gap-0 overflow-hidden py-0">
-                  <Skeleton className="aspect-[16/10] rounded-none" />
-                  <CardContent className="grid gap-3 py-4">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
-                    <Skeleton className="h-12 w-full" />
-                  </CardContent>
-                </Card>
+            <p className="text-sm text-muted-foreground">
+              {state.cars.length
+                ? `Found ${state.cars.length} so far, finding more…`
+                : "Finding cars that fit you. This takes a few seconds…"}
+            </p>
+            <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {state.cars.map((car, i) => (
+                <li key={car.car_key} className="flex [&>*]:w-full">
+                  <CarCard car={{ ...car, rank: i + 1 }} />
+                </li>
               ))}
-            </div>
+              {Array.from({ length: Math.max(0, MAX_RESULTS - state.cars.length) }, (_, i) => (
+                <li key={`pending-${i}`} aria-hidden>
+                  <Card className="gap-0 overflow-hidden py-0">
+                    <Skeleton className="aspect-[16/10] rounded-none" />
+                    <CardContent className="grid gap-3 py-4">
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                      <Skeleton className="h-12 w-full" />
+                    </CardContent>
+                  </Card>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 

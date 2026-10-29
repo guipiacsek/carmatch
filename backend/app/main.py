@@ -1,20 +1,23 @@
 import asyncio
+import ipaddress
+import json
 import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import Any
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from . import llm
 from .auth import optional_user_id
-from .candidates import TARGET_RESULTS, build_candidates
+from .candidates import TARGET_RESULTS, Candidate, build_candidates
 from .config import MAX_BODY_BYTES, USER_AGENT, settings
 from .images import find_image
-from .models import MAX_YEAR, MIN_YEAR, CarImage, LLMPick, Preferences, RecommendResponse
+from .models import MAX_YEAR, MIN_YEAR, CarImage, CarResult, LLMPick, Preferences, RecommendResponse
 from .store import cache_get, cache_key, cache_put, rate_limit_hit
 from .vehicles import catalog, load_catalog
 
@@ -75,13 +78,30 @@ async def ensure_catalog() -> None:
         raise HTTPException(503, "Vehicle data is still loading. Please try again in a minute.") from None
 
 
+def _internal(addr: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(addr)
+    except ValueError:
+        return False
+    return ip.is_private or ip.is_loopback or ip.is_link_local
+
+
 def client_ip(request: Request) -> str:
     parts = [p.strip() for p in request.headers.get("x-forwarded-for", "").split(",") if p.strip()]
+    # Render's own load balancers append private 10.x hops; drop them before counting proxies.
+    while len(parts) > 1 and _internal(parts[-1]):
+        parts.pop()
     hops = settings.trusted_proxy_hops
     if parts and hops > 0:
         # Entries left of what our own proxies appended are client-controlled, so count from the right.
         return parts[-hops] if len(parts) >= hops else parts[0]
     return request.client.host if request.client else "unknown"
+
+
+@app.get("/api/client-ip")
+async def whoami(request: Request) -> dict[str, str]:
+    """Shows callers the address the rate limiter counts them under (only their own IP, nothing else)."""
+    return {"ip": client_ip(request), "forwarded_for": request.headers.get("x-forwarded-for", "")}
 
 
 @app.get("/health")
@@ -112,17 +132,25 @@ async def image(
     return await find_image(request.app.state.http, year, make, model)
 
 
-@app.post("/api/recommend", response_model=RecommendResponse)
+def ndjson(event: dict[str, Any]) -> bytes:
+    return (json.dumps(event, separators=(",", ":")) + "\n").encode()
+
+
+@app.post("/api/recommend")
 async def recommend(
     prefs: Preferences, request: Request, user_id: str | None = Depends(optional_user_id)
-) -> RecommendResponse:
+) -> StreamingResponse:
+    """Streams NDJSON: {"type":"meta"}, then one {"type":"cars"} per finished batch, then {"type":"done"}
+    with the final ordered RecommendResponse. Errors before streaming (422/429/503) are normal JSON."""
     http: httpx.AsyncClient = request.app.state.http
-    started = time.monotonic()
+    headers = {"Cache-Control": "no-store", "X-Accel-Buffering": "no"}
     key = cache_key(prefs)
 
     if cached := await cache_get(http, key):  # cache hits skip the limiter and OpenAI
         log.info("recommend cache hit user=%s", user_id)
-        return RecommendResponse.model_validate({**cached, "cached": True})
+        done = RecommendResponse.model_validate({**cached, "cached": True})
+        body = [ndjson({"type": "meta", "relaxed": done.relaxed, "cached": True}), done_event(done)]
+        return StreamingResponse(iter(body), media_type="application/x-ndjson", headers=headers)
 
     ip = client_ip(request)
     allowed, retry_after = await rate_limit_hit(http, f"recommend:{ip}")
@@ -136,38 +164,74 @@ async def recommend(
 
     await ensure_catalog()
     cands, relaxed = build_candidates(catalog.vehicles, prefs, catalog.fuels_by_model)
+    started = time.monotonic()
 
-    picks: list[LLMPick] = []
-    llm_failed = False
-    if cands and settings.openai_api_key:
+    async def run(batch: list[Candidate]) -> tuple[list[Candidate], list[LLMPick] | None]:
         try:
-            picks = await llm.rank_with_llm(http, prefs, cands)
+            return batch, await llm.rank_with_llm(http, prefs, batch)
         except (httpx.HTTPError, ValueError, KeyError, IndexError) as e:
-            log.error("LLM ranking failed, falling back to data-only ranking: %r", e)
-            llm_failed = True
-    results = llm.assemble(prefs, cands, picks)
+            log.error("LLM batch failed, its slots get data-only backfill: %r", e)
+            return batch, None
 
-    notices = []
-    if relaxed:
-        notices.append(f"Not enough exact matches, so we relaxed: {', '.join(relaxed)}.")
-    if len(results) < TARGET_RESULTS:
-        notices.append(
-            f"Only {len(results)} car{'s' if len(results) != 1 else ''} match your must-haves "
-            "(body type, fuel, transmission, seats). Try widening them."
+    async def events() -> AsyncIterator[bytes]:
+        yield ndjson({"type": "meta", "relaxed": relaxed, "cached": False})
+        used: set[tuple[str, str]] = set()
+        results: list[CarResult] = []
+        failed = picked = 0
+        tasks = (
+            [asyncio.ensure_future(run(b)) for b in llm.split_batches(cands)]
+            if cands and settings.openai_api_key
+            else []
         )
-    if cands and not picks:
-        notices.append("AI ranking is unavailable right now, so these are data-based matches without price estimates.")
-    out = RecommendResponse(results=results, relaxed=relaxed, notice=" ".join(notices) or None)
+        try:
+            for next_done in asyncio.as_completed(tasks):
+                batch, picks = await next_done
+                if picks is None:
+                    failed += 1
+                    continue
+                cars = llm.validate_batch(prefs, batch, picks, used)
+                picked += len(cars)
+                results += cars
+                if cars:
+                    yield ndjson({"type": "cars", "cars": [c.model_dump() for c in cars]})
+        finally:
+            for t in tasks:  # client disconnected mid-stream: stop paying for unfinished calls
+                t.cancel()
 
-    if not llm_failed:  # don't pin a degraded answer in the cache for 7 days
-        await cache_put(http, key, out.model_dump(exclude={"cached"}))
-    log.info(
-        "recommend ip=%s user=%s candidates=%d picks=%d relaxed=%s %.1fs",
-        ip,
-        user_id,
-        len(cands),
-        len(picks),
-        relaxed,
-        time.monotonic() - started,
-    )
-    return out
+        if extra := llm.backfill(prefs, cands, used, TARGET_RESULTS - len(results)):
+            results += extra
+            yield ndjson({"type": "cars", "cars": [c.model_dump() for c in extra]})
+
+        final = llm.finalize(results)
+        notices = []
+        if relaxed:
+            notices.append(f"Not enough exact matches, so we relaxed: {', '.join(relaxed)}.")
+        if len(final) < TARGET_RESULTS:
+            notices.append(
+                f"Only {len(final)} car{'s' if len(final) != 1 else ''} match your must-haves "
+                "(body type, fuel, transmission, seats). Try widening them."
+            )
+        if cands and not picked:
+            notices.append(
+                "AI ranking is unavailable right now, so these are data-based matches without price estimates."
+            )
+        out = RecommendResponse(results=final, relaxed=relaxed, notice=" ".join(notices) or None)
+        yield done_event(out)
+        if not failed:  # don't pin a degraded answer in the cache for 7 days
+            await cache_put(http, key, out.model_dump(exclude={"cached"}))
+        log.info(
+            "recommend ip=%s user=%s candidates=%d picks=%d failed_batches=%d relaxed=%s %.1fs",
+            ip,
+            user_id,
+            len(cands),
+            picked,
+            failed,
+            relaxed,
+            time.monotonic() - started,
+        )
+
+    return StreamingResponse(events(), media_type="application/x-ndjson", headers=headers)
+
+
+def done_event(out: RecommendResponse) -> bytes:
+    return ndjson({"type": "done", **out.model_dump()})

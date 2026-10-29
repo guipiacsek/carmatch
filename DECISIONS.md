@@ -60,6 +60,9 @@ These are choices the brief didn't settle, made while building the app autonomou
 
 38. **Speed.** Photos moved out of `/api/recommend` into `GET /api/image` (validated, cached, `Cache-Control` 7 days), loaded per card after results show. The frontend pings `/health` on page load to wake Render's free tier while the wizard is being answered. Spare picks went down to 2 to trim GPT output.
 
+39. **3 parallel GPT calls instead of one.** Candidates are dealt round-robin by model into 3 groups (all years of a model stay in one group, so batches never return the same model). Each call picks 4, and the best 3 valid ones are kept, for 9 results total. `/api/recommend` streams NDJSON (`meta`, one `cars` line per finished batch, `done` with the final ordered list) so cards appear as batches land. A failed batch's slots get data-only backfill, and that response isn't cached. Final order: within budget first, then match score. GPT is told scores are absolute, since each call only sees a third of the pool. Measured: all 9 cars in about 3.5 to 4.5 s, versus 6 to 8 s for 7 cars in one call.
+40. **Client IP behind Render:** the live database showed Render's load balancers appending private `10.x` addresses, a different one per request, so every search counted as a new client. Private and loopback hops are now dropped from the right of `X-Forwarded-For` before counting `TRUSTED_PROXY_HOPS`. `GET /api/client-ip` shows callers the address they're counted under.
+
 ## Hosting
 
 33. **No Docker.** Render runs the backend on its native Python runtime (`render.yaml`: pip install, then uvicorn). The stack is just GitHub, Vercel, Render and Supabase.
