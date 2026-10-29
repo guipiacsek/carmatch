@@ -1,4 +1,4 @@
-"""Vehicle catalog: fueleconomy.gov dataset (grounding for all candidates) + NHTSA vPIC makes."""
+"""Vehicle catalog: fueleconomy.gov dataset (grounding for all candidates) and the brand picker list."""
 
 import asyncio
 import csv
@@ -21,7 +21,15 @@ log = logging.getLogger(__name__)
 # The fueleconomy.gov web services' full dataset (same data as /ws/rest/vehicle/*), downloaded once instead of
 # thousands of per-vehicle calls per request.
 FE_DATASET_URL = "https://www.fueleconomy.gov/feg/epadata/vehicles.csv.zip"
-VPIC_URL = "https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/{}?format=json"
+# Brands offered in the wizard's brand picker (EPA spellings). Other makes can still appear in "any brand" results.
+PICKER_BRANDS = frozenset(
+    {
+        "Acura", "Alfa Romeo", "Aston Martin", "Audi", "BMW", "Buick", "Cadillac", "Chevrolet", "Chrysler", "Dodge",
+        "Ferrari", "Fiat", "Ford", "Genesis", "GMC", "Honda", "Hyundai", "Infiniti", "Jaguar", "Jeep", "Kia",
+        "Lamborghini", "Land Rover", "Lexus", "Lincoln", "Mazda", "McLaren Automotive", "Mercedes-Benz", "MINI",
+        "Mitsubishi", "Nissan", "Porsche", "Ram", "Subaru", "Tesla", "Toyota", "Volkswagen", "Volvo",
+    }
+)  # fmt: skip
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,11 +200,12 @@ def parse_rows(rows: "csv.DictReader[str]") -> list[Vehicle]:
 class Catalog:
     def __init__(self) -> None:
         self.vehicles: list[Vehicle] = []
-        self.makes: list[str] = []
+        self.makes: list[str] = []  # the brand picker
+        self.known_makes: set[str] = set()  # every make in the data
         self.fuels_by_model: dict[tuple[str, str], set[str]] = {}
         self._ready = asyncio.Event()
 
-    def load(self, vehicles: list[Vehicle], vpic_makes: set[str] | None) -> None:
+    def load(self, vehicles: list[Vehicle]) -> None:
         # EPA spells some makes inconsistently ("Mini"/"MINI"); use the most common spelling.
         counts = Counter(v.make for v in vehicles)
         canonical = {m.lower(): m for m, _ in reversed(counts.most_common())}
@@ -204,11 +213,8 @@ class Catalog:
             v if canonical[v.make.lower()] == v.make else replace(v, make=canonical[v.make.lower()]) for v in vehicles
         ]
         self.vehicles = vehicles
-        counts = Counter(v.make for v in vehicles)
-        # Brand list = vPIC car/MPV/truck makes with EPA data, plus established EPA makes vPIC lacks (e.g. Scion).
-        self.makes = sorted(
-            (m for m, n in counts.items() if vpic_makes is None or m.upper() in vpic_makes or n >= 40), key=str.lower
-        )
+        self.known_makes = {v.make for v in vehicles}
+        self.makes = sorted(self.known_makes & PICKER_BRANDS, key=str.lower)
         self.fuels_by_model = {}
         for v in vehicles:
             self.fuels_by_model.setdefault((v.make, v.base_model), set()).add(v.fuel)
@@ -235,27 +241,13 @@ async def _dataset_bytes(client: httpx.AsyncClient) -> bytes:
     return resp.content
 
 
-async def _vpic_makes(client: httpx.AsyncClient) -> set[str] | None:
-    try:
-        results = await asyncio.gather(
-            *(
-                client.get(VPIC_URL.format(t), timeout=20)
-                for t in ("car", "multipurpose passenger vehicle (mpv)", "truck")
-            ),
-        )
-        return {m["MakeName"].strip().upper() for r in results for m in r.raise_for_status().json()["Results"]}
-    except (httpx.HTTPError, KeyError, ValueError) as e:
-        log.warning("vPIC makes unavailable, using EPA makes only: %s", e)
-        return None
-
-
 async def load_catalog() -> None:
     async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}, follow_redirects=True) as client:
-        data, vpic = await asyncio.gather(_dataset_bytes(client), _vpic_makes(client))
+        data = await _dataset_bytes(client)
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         text = z.read("vehicles.csv").decode("utf-8", errors="replace")
     vehicles = await asyncio.to_thread(parse_rows, csv.DictReader(io.StringIO(text)))
-    catalog.load(vehicles, vpic)
+    catalog.load(vehicles)
     log.info("catalog loaded: %d vehicles, %d makes", len(vehicles), len(catalog.makes))
 
 

@@ -81,7 +81,7 @@ export function Layout() {
             availability and specs with the seller.
           </p>
           <p>
-            Vehicle data from fueleconomy.gov (EPA/DOE) and NHTSA vPIC. Photos from Wikimedia Commons contributors,
+            Vehicle data from fueleconomy.gov (EPA/DOE). Photos from Wikimedia Commons contributors,
             credited on each card. "See listings" links may become affiliate links.
           </p>
         </footer>

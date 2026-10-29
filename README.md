@@ -2,7 +2,7 @@
 
 Answer ten quick questions and get **9 ranked car recommendations** for the US market, grounded in real vehicle data.
 
-- Candidates come only from **fueleconomy.gov** (EPA/DOE) data, with the brand list from **NHTSA vPIC**. No keys needed.
+- Candidates come only from **fueleconomy.gov** (EPA/DOE) data. No keys needed.
 - **gpt-4.1-mini** ranks them with Structured Outputs. It can only pick from the candidate ids it was given, and every pick is validated.
 - Prices are labeled **AI estimates**. Photos come from **Wikimedia Commons**, credited on each card.
 - Guests can use everything. An account (Supabase email/password) lets you keep up to 10 favorites.
@@ -104,7 +104,7 @@ The rate limiter reads the client IP from `X-Forwarded-For`: private `10.x` hops
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/health` | Liveness check, plus whether the vehicle catalog has loaded |
-| GET | `/api/makes` | Brand list (vPIC ∩ EPA) |
+| GET | `/api/makes` | Brand picker list (38 curated brands) |
 | GET | `/api/image?year=&make=&model=` | Commons photo + attribution for one card (loaded after results) |
 | POST | `/api/car-details` | Opened card: GPT overview, pros/cons, reliability, trims, used-buying tips, rivals, grounded in EPA facts (cached 7 days, 40/hour/IP) |
 | GET | `/api/results/{share_id}` | Shared results (the share id is the cache key; links last 7 days) |
@@ -113,4 +113,4 @@ The rate limiter reads the client IP from `X-Forwarded-For`: private `10.x` hops
 
 ## Data and attribution
 
-Vehicle data: [fueleconomy.gov](https://www.fueleconomy.gov/feg/ws/) (U.S. EPA / DOE) and [NHTSA vPIC](https://vpic.nhtsa.dot.gov/api/). Photos: [Wikimedia Commons](https://commons.wikimedia.org) contributors, credited with author and license on each card. Prices are AI estimates, not offers.
+Vehicle data: [fueleconomy.gov](https://www.fueleconomy.gov/feg/ws/) (U.S. EPA / DOE). Photos: [Wikimedia Commons](https://commons.wikimedia.org) contributors, credited with author and license on each card. Prices are AI estimates, not offers.

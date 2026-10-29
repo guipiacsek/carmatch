@@ -28,7 +28,7 @@ BODY = {"year_min": 2015, "year_max": 2024, "condition": "used", "budget": 30000
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     async def fake_load() -> None:
-        catalog.load(fleet(), None)
+        catalog.load(fleet())
 
     async def fake_image(_client: object, year: int, make: str, model: str) -> CarImage:
         return CarImage(url=f"https://img/{year}-{model}.jpg", page_url="https://p", author="A", license="CC0")
