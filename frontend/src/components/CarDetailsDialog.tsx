@@ -68,7 +68,7 @@ export default function CarDetailsDialog({
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="max-h-[92svh] gap-0 overflow-y-auto rounded-[28px] p-0 sm:max-w-3xl [&>button:last-child]:text-white"
+        className="max-h-[92svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-y-auto rounded-[28px] p-0 sm:max-w-3xl [&>button:last-child]:text-white"
         style={{ "--c": color } as React.CSSProperties}
       >
         <div className="grid items-center gap-5 bg-[var(--c)] p-6 text-white sm:grid-cols-2 sm:p-7">
@@ -86,7 +86,7 @@ export default function CarDetailsDialog({
           </DialogHeader>
         </div>
 
-        <div className="grid gap-5 p-6 sm:p-7">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 p-6 sm:p-7">
         <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {facts.map(([k, v]) => (
             <div key={k} className="rounded-[14px] bg-background px-3 py-2.5 text-sm dark:bg-secondary">
@@ -163,7 +163,7 @@ export default function CarDetailsDialog({
           )}
         </div>
 
-        <Button asChild className="w-full rounded-full sm:w-fit">
+        <Button asChild className="h-auto w-full rounded-full py-2.5 whitespace-normal sm:w-fit">
           <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
             See {name} on Cars.com <ExternalLink aria-hidden />
           </a>

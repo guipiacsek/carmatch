@@ -2,6 +2,7 @@ import { Info, Pencil, RotateCcw } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { Link, Navigate } from "react-router-dom"
 
+import { Dashboard } from "@/components/Dashboard"
 import { ResultList } from "@/components/ResultList"
 import { ShareButton } from "@/components/ShareButton"
 import { Button } from "@/components/ui/button"
@@ -83,13 +84,15 @@ export default function Results() {
           {editLink}
         </div>
       </div>
-      <ul className="-mt-2 flex flex-wrap gap-2" aria-label="Your answers">
-        {prefChips(loadPrefs()).map((c) => (
-          <li key={c} className="rounded-full bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            {c}
-          </li>
-        ))}
-      </ul>
+      {state.kind !== "done" && (
+        <ul className="-mt-2 flex flex-wrap gap-2" aria-label="Your answers">
+          {prefChips(loadPrefs()).map((c) => (
+            <li key={c} className="rounded-full bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
+              {c}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div aria-live="polite" aria-busy={state.kind === "loading"}>
         {state.kind === "loading" && (
@@ -135,7 +138,7 @@ export default function Results() {
                 </CardContent>
               </Card>
             ) : (
-              <ResultList cars={state.data.results} />
+              <Dashboard cars={state.data.results} prefs={loadPrefs()} />
             )}
           </div>
         )}
