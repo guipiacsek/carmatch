@@ -15,7 +15,8 @@ log = logging.getLogger(__name__)
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 MAX_YEAR_GAP = 15  # rejects e.g. a 1958 Land Cruiser for a 2027, but allows a 2014 Durango (same generation)
 _limit = asyncio.Semaphore(3)  # Wikimedia asks API clients not to fire many requests in parallel
-_cache: dict[str, CarImage | None] = {}  # shortcut: unbounded per-process cache, fine for a few thousand models
+_cache: dict[str, CarImage | None] = {}
+MAX_CACHE = 5_000  # /api/image takes free-text model names, so keep the cache bounded
 
 
 # Words EPA model names carry that photo titles usually don't ("F150 Pickup" vs "Ford F-150").
@@ -74,6 +75,8 @@ async def find_image(client: httpx.AsyncClient, year: int, make: str, model: str
     for query in (f"{year} {make} {model}", f"{make} {model}"):
         key = query.lower()
         if key not in _cache:
+            if len(_cache) >= MAX_CACHE:
+                _cache.clear()
             try:
                 async with _limit:
                     _cache[key] = await _search(client, query, model, year)
@@ -83,7 +86,3 @@ async def find_image(client: httpx.AsyncClient, year: int, make: str, model: str
         if _cache[key]:
             return _cache[key]
     return None
-
-
-async def find_images(client: httpx.AsyncClient, cars: list[tuple[int, str, str]]) -> list[CarImage | None]:
-    return list(await asyncio.gather(*(find_image(client, y, mk, md) for y, mk, md in cars)))

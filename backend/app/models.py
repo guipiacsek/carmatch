@@ -72,7 +72,7 @@ class CarResult(BaseModel):
     price_max: int | None
     over_budget: bool
     bullets: list[str]
-    image: CarImage | None = None
+    image: CarImage | None = None  # filled by the frontend from /api/image (kept in saved favorites)
 
 
 class RecommendResponse(BaseModel):
@@ -91,10 +91,10 @@ class LLMPick(BaseModel):
     seats: int = Field(ge=1, le=15)
     estimated_price_min: int = Field(ge=0)
     estimated_price_max: int = Field(ge=0)
-    rank: int = Field(ge=1, le=10)
+    rank: int = Field(ge=1, le=9)
     match_score: int = Field(ge=0, le=100)
     bullets: list[str] = Field(min_length=3, max_length=3)
 
 
 class LLMResponse(BaseModel):
-    picks: list[LLMPick] = Field(min_length=1, max_length=10)
+    picks: list[LLMPick] = Field(min_length=1, max_length=9)

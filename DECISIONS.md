@@ -58,6 +58,8 @@ These are choices the brief didn't settle, made while building the app autonomou
 36. **Data-only backfill never claims more seats than the class typically has** (large SUVs count as 5, minivans as 7), and is skipped when that's below `min_seats`. Exotic makes are demoted when the budget is under $100k.
 37. **Commons photos:** the closest-year photo within 15 years wins (long-running generations like the Durango only have older photos). Lookups run 3 at a time, per Wikimedia's API etiquette.
 
+38. **Speed.** Photos moved out of `/api/recommend` into `GET /api/image` (validated, cached, `Cache-Control` 7 days), loaded per card after results show. The frontend pings `/health` on page load to wake Render's free tier while the wizard is being answered. Spare picks went down to 2 to trim GPT output.
+
 ## Hosting
 
 33. **No Docker.** Render runs the backend on its native Python runtime (`render.yaml`: pip install, then uvicorn). The stack is just GitHub, Vercel, Render and Supabase.

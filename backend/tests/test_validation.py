@@ -122,7 +122,7 @@ def test_rank_with_llm_request_and_response(monkeypatch: pytest.MonkeyPatch) -> 
 
     def handler(req: httpx.Request) -> httpx.Response:
         sent.update(json.loads(req.content), auth=req.headers["authorization"])
-        picks = [pick(f"c{i}", i).model_dump() for i in range(1, 11)]
+        picks = [pick(f"c{i}", i).model_dump() for i in range(1, 10)]
         return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps({"picks": picks})}}]})
 
     async def run() -> list[LLMPick]:
@@ -130,8 +130,8 @@ def test_rank_with_llm_request_and_response(monkeypatch: pytest.MonkeyPatch) -> 
             return await llm.rank_with_llm(client, p, cands)
 
     picks = asyncio.run(run())
-    assert [x.id for x in picks] == [f"c{i}" for i in range(1, 11)]
-    assert sent["response_format"]["json_schema"]["schema"]["properties"]["picks"]["maxItems"] == 10  # type: ignore[index]
+    assert [x.id for x in picks] == [f"c{i}" for i in range(1, 10)]
+    assert sent["response_format"]["json_schema"]["schema"]["properties"]["picks"]["maxItems"] == 9  # type: ignore[index]
     assert sent["model"] == "gpt-4.1-mini" and sent["auth"] == "Bearer sk-test"
     fmt = sent["response_format"]
     assert isinstance(fmt, dict) and fmt["json_schema"]["strict"] is True

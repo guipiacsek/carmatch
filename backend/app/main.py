@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -13,8 +13,8 @@ from . import llm
 from .auth import optional_user_id
 from .candidates import TARGET_RESULTS, build_candidates
 from .config import MAX_BODY_BYTES, USER_AGENT, settings
-from .images import find_images
-from .models import LLMPick, Preferences, RecommendResponse
+from .images import find_image
+from .models import MAX_YEAR, MIN_YEAR, CarImage, LLMPick, Preferences, RecommendResponse
 from .store import cache_get, cache_key, cache_put, rate_limit_hit
 from .vehicles import catalog, load_catalog
 
@@ -96,6 +96,22 @@ async def makes(response: Response) -> dict[str, list[str]]:
     return {"makes": catalog.makes}
 
 
+@app.get("/api/image", response_model=CarImage | None)
+async def image(
+    request: Request,
+    response: Response,
+    year: int = Query(ge=MIN_YEAR, le=MAX_YEAR),
+    make: str = Query(min_length=1, max_length=40),
+    model: str = Query(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9 .&'/+()\-]+$"),
+) -> CarImage | None:
+    """Photo + attribution for one result card. Separate from /api/recommend so results show without waiting."""
+    await ensure_catalog()
+    if make not in catalog.makes:
+        raise HTTPException(404, "Unknown make")
+    response.headers["Cache-Control"] = "public, max-age=604800"
+    return await find_image(request.app.state.http, year, make, model)
+
+
 @app.post("/api/recommend", response_model=RecommendResponse)
 async def recommend(
     prefs: Preferences, request: Request, user_id: str | None = Depends(optional_user_id)
@@ -130,9 +146,6 @@ async def recommend(
             log.error("LLM ranking failed, falling back to data-only ranking: %r", e)
             llm_failed = True
     results = llm.assemble(prefs, cands, picks)
-
-    images = await find_images(http, [(r.year, r.make, r.model) for r in results])
-    results = [r.model_copy(update={"image": img}) for r, img in zip(results, images, strict=True)]
 
     notices = []
     if relaxed:

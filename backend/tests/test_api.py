@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import main
+from app.models import CarImage
 from app.store import MemoryRateLimiter, _mem_cache, memory_limiter
 from app.vehicles import catalog
 
@@ -17,11 +18,11 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     async def fake_load() -> None:
         catalog.load(fleet(), None)
 
-    async def no_images(_client: object, cars: list[object]) -> list[None]:
-        return [None] * len(cars)
+    async def fake_image(_client: object, year: int, make: str, model: str) -> CarImage:
+        return CarImage(url=f"https://img/{year}-{model}.jpg", page_url="https://p", author="A", license="CC0")
 
     monkeypatch.setattr(main, "load_catalog", fake_load)
-    monkeypatch.setattr(main, "find_images", no_images)
+    monkeypatch.setattr(main, "find_image", fake_image)
     memory_limiter.hits.clear()
     _mem_cache.clear()
     with TestClient(main.app) as c:
@@ -78,3 +79,12 @@ def test_cors_restricted_to_allowed_origins(client: TestClient) -> None:
     assert ok.headers.get("access-control-allow-origin") == "http://localhost:5173"
     bad = client.options("/api/recommend", headers={**pre, "Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in bad.headers
+
+
+def test_image_endpoint_validates_and_caches(client: TestClient) -> None:
+    ok = client.get("/api/image", params={"year": 2020, "make": "Toyota", "model": "RAV4"})
+    assert ok.status_code == 200 and ok.json()["url"] == "https://img/2020-RAV4.jpg"
+    assert "max-age" in ok.headers["cache-control"]
+    assert client.get("/api/image", params={"year": 2020, "make": "Nope", "model": "X"}).status_code == 404
+    assert client.get("/api/image", params={"year": 1800, "make": "Toyota", "model": "RAV4"}).status_code == 422
+    assert client.get("/api/image", params={"year": 2020, "make": "Toyota", "model": "<script>"}).status_code == 422

@@ -1,5 +1,5 @@
 import { supabase } from "./supabase"
-import type { Preferences, RecommendResponse } from "./types"
+import type { CarImage, CarResult, Preferences, RecommendResponse } from "./types"
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000").replace(/\/$/, "")
 
@@ -42,4 +42,22 @@ export async function recommend(prefs: Preferences, signal?: AbortSignal): Promi
     body: JSON.stringify(prefs),
     signal,
   })
+}
+
+// Render's free tier sleeps when idle: wake it on page load so it's up by the time the wizard is done.
+export function warmUp(): void {
+  fetch(`${API_URL}/health`).catch(() => {})
+}
+
+const images = new Map<string, Promise<CarImage | null>>()
+
+// Photos load per card after results show, so they never delay the ranking.
+export function getImage(car: Pick<CarResult, "year" | "make" | "model">): Promise<CarImage | null> {
+  const qs = new URLSearchParams({ year: String(car.year), make: car.make, model: car.model }).toString()
+  let p = images.get(qs)
+  if (!p) {
+    p = request<CarImage | null>(`/api/image?${qs}`).catch(() => null)
+    images.set(qs, p)
+  }
+  return p
 }

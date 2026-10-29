@@ -1,11 +1,13 @@
 import { CarFront, ExternalLink, Fuel, Gauge, Heart, Users, Cog } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useAccount } from "@/hooks/account"
-import type { CarResult } from "@/lib/types"
+import { getImage } from "@/lib/api"
+import type { CarImage, CarResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
@@ -21,10 +23,11 @@ function efficiency(car: CarResult): string {
   return car.mpg ? `${car.mpg} MPG` : "n/a"
 }
 
-function CarPhoto({ car }: { car: CarResult }) {
+function CarPhoto({ car, image }: { car: CarResult; image: CarImage | null | undefined }) {
   const [failed, setFailed] = useState(false)
   const name = `${car.year} ${car.make} ${car.model}`
-  if (!car.image || failed) {
+  if (image === undefined) return <Skeleton className="aspect-[16/10] rounded-none" />
+  if (!image || failed) {
     return (
       <div
         className="flex aspect-[16/10] flex-col items-center justify-center gap-2 bg-gradient-to-br from-muted to-muted/40 text-muted-foreground"
@@ -39,7 +42,7 @@ function CarPhoto({ car }: { car: CarResult }) {
   return (
     <figure>
       <img
-        src={car.image.url}
+        src={image.url}
         alt={name}
         loading="lazy"
         onError={() => setFailed(true)}
@@ -47,16 +50,16 @@ function CarPhoto({ car }: { car: CarResult }) {
       />
       <figcaption className="truncate px-4 pt-1.5 text-[11px] text-muted-foreground">
         Photo:{" "}
-        <a href={car.image.page_url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
-          {car.image.author}
+        <a href={image.page_url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+          {image.author}
         </a>
         {", "}
-        {car.image.license_url ? (
-          <a href={car.image.license_url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
-            {car.image.license}
+        {image.license_url ? (
+          <a href={image.license_url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+            {image.license}
           </a>
         ) : (
-          car.image.license
+          image.license
         )}
         {" via Wikimedia Commons"}
       </figcaption>
@@ -69,6 +72,16 @@ export function CarCard({ car, showRank = true }: { car: CarResult; showRank?: b
   const fav = isFavorite(car.car_key)
   const [busy, setBusy] = useState(false)
   const name = `${car.year} ${car.make} ${car.model}`
+  // undefined = still loading; saved favorites already carry their image
+  const [image, setImage] = useState<CarImage | null | undefined>(car.image ?? undefined)
+  useEffect(() => {
+    if (car.image) return
+    let live = true
+    getImage(car).then((img) => live && setImage(img))
+    return () => {
+      live = false
+    }
+  }, [car])
 
   const specs = [
     { icon: CarFront, label: "Body", value: car.body_type },
@@ -94,14 +107,14 @@ export function CarCard({ car, showRank = true }: { car: CarResult; showRank?: b
         disabled={busy}
         onClick={async () => {
           setBusy(true)
-          await toggleFavorite(car)
+          await toggleFavorite({ ...car, image: image ?? null }) // keep the photo credit with the favorite
           setBusy(false)
         }}
       >
         <Heart className={cn("size-5", fav && "fill-red-500 text-red-500")} aria-hidden />
       </Button>
 
-      <CarPhoto car={car} />
+      <CarPhoto car={car} image={image} />
 
       <CardContent className="grid gap-4 pt-4">
         <div className="flex items-start justify-between gap-3">

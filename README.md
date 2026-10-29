@@ -20,7 +20,7 @@ supabase/   SQL migrations + PGlite tests                            → Supabas
 3. Otherwise it checks the rate limit: 8 searches per hour per IP, a sliding window in Postgres with an in-memory fallback. Over the limit, it returns `429` with `Retry-After`.
 4. It filters the EPA catalog (about 39k vehicles from 1990 onward) by your hard constraints, groups the matches by model year, and keeps a diverse set of at most 40 candidates. If fewer than 7 survive, it relaxes **brand**, then **drivetrain**, then **year range**, and tells you what it relaxed.
 5. GPT returns 7 picks: id (constrained by an enum to the candidate ids), rank, score, price range, seats, and 3 bullets. Invalid, duplicate or too-few-seats picks are dropped and backfilled from the data. Cars whose estimated price is over budget are flagged and moved down.
-6. It fetches a Commons photo for each car, plus its author and license.
+6. Results return right away. Each card then fetches its Commons photo, author and license from `/api/image`.
 
 ## Local setup
 
@@ -105,6 +105,7 @@ The rate limiter reads the client IP from `X-Forwarded-For`, counting `TRUSTED_P
 | --- | --- | --- |
 | GET | `/health` | Liveness check, plus whether the vehicle catalog has loaded |
 | GET | `/api/makes` | Brand list (vPIC ∩ EPA) |
+| GET | `/api/image?year=&make=&model=` | Commons photo + attribution for one card (loaded after results) |
 | POST | `/api/recommend` | `Preferences` → `RecommendResponse` (see `backend/app/models.py`, mirrored in `frontend/src/lib/types.ts`) |
 
 ## Data and attribution

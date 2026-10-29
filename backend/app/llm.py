@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 MAX_BULLET_WORDS = 12
-SPARE_PICKS = 3  # extra ranked picks so dropped ones (duplicate model, too few seats) still get priced backups
+SPARE_PICKS = 2  # extra ranked picks so dropped ones (duplicate model, too few seats) still get priced backups
 
 SYSTEM_PROMPT = """You are CarMatch, a US car-buying assistant (USD, US market). You rank cars for one shopper.
 
