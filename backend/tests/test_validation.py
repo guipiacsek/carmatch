@@ -102,3 +102,33 @@ def test_assemble_without_llm_is_grounded() -> None:
     results = assemble(p, cands, [])
     assert len(results) == 7 and all(r.price_min is None for r in results)
     assert all(len(r.bullets) == 3 for r in results)
+
+
+def test_rank_with_llm_request_and_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+    from dataclasses import replace
+
+    import httpx
+
+    from app import llm
+
+    monkeypatch.setattr(llm, "settings", replace(llm.settings, openai_api_key="sk-test"))
+    vs = fleet()
+    p = prefs(body_types=["SUV"])
+    cands, _ = build_candidates(vs, p, fuels(vs))
+    sent: dict[str, object] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        sent.update(json.loads(req.content), auth=req.headers["authorization"])
+        picks = [pick(f"c{i}", i).model_dump() for i in range(1, 8)]
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps({"picks": picks})}}]})
+
+    async def run() -> list[LLMPick]:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await llm.rank_with_llm(client, p, cands)
+
+    picks = asyncio.run(run())
+    assert [x.id for x in picks] == [f"c{i}" for i in range(1, 8)]
+    assert sent["model"] == "gpt-4.1-mini" and sent["auth"] == "Bearer sk-test"
+    fmt = sent["response_format"]
+    assert isinstance(fmt, dict) and fmt["json_schema"]["strict"] is True
