@@ -78,6 +78,7 @@ def test_assemble_drops_invalid_ids_and_fills_to_seven() -> None:
     assert len(results) == 7
     assert [r.car_key for r in results[:2]] == [keys["c3"], keys["c1"]]  # c999 unknown, dup c3, c5 too few seats
     assert len({r.car_key for r in results}) == 7
+    assert len({(r.make, r.model) for r in results}) == 7  # no model repeated across years
     assert [r.rank for r in results] == list(range(1, 8))
     assert results[2].price_min is None  # filled from data, no invented price
 
