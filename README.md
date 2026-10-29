@@ -104,7 +104,7 @@ The rate limiter reads the client IP from `X-Forwarded-For`: private `10.x` hops
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/health` | Liveness check, plus whether the vehicle catalog has loaded |
-| GET | `/api/makes` | Brand picker list (38 curated brands) |
+| GET | `/api/makes` | Brand list (38 curated brands) |
 | GET | `/api/image?year=&make=&model=` | Commons photo + attribution for one card (loaded after results) |
 | POST | `/api/car-details` | Opened card: GPT overview, pros/cons, reliability, trims, used-buying tips, rivals, grounded in EPA facts (cached 7 days, 40/hour/IP) |
 | GET | `/api/results/{share_id}` | Shared results (the share id is the cache key; links last 7 days) |

@@ -2,7 +2,7 @@ from collections import Counter
 
 from app.candidates import MAX_CANDIDATES, build_candidates, matches
 from app.models import MAX_YEAR
-from app.vehicles import classify_body, classify_drive, classify_fuel
+from app.vehicles import Catalog, classify_body, classify_drive, classify_fuel
 
 from .conftest import fleet, prefs, veh
 
@@ -100,3 +100,10 @@ def test_used_skips_newest_year_and_spreads_two_years() -> None:
     assert len(rav) == 2 and 2024 not in rav  # 2015-2024 offered; newest skipped
     new, _ = build_candidates(vs, prefs(body_types=["SUV"], condition="either"), fuels(vs))
     assert max(c.year for c in new if c.model == "RAV4") == 2024
+
+
+def test_catalog_keeps_only_offered_brands() -> None:
+    c = Catalog()
+    c.load([*fleet(), veh(999, 2020, "Yugo", "GV")])
+    assert "Yugo" not in c.makes and all(v.make != "Yugo" for v in c.vehicles)
+    assert "Toyota" in c.makes

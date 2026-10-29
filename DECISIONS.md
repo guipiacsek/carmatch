@@ -5,7 +5,7 @@ These are choices the brief didn't settle, made while building the app autonomou
 ## Data and candidates
 
 1. **fueleconomy.gov bulk dataset instead of per-request REST calls.** The `/ws/rest/vehicle/*` services return the same data as `vehicles.csv.zip` (about 2 MB). Building about 40 candidates per search through REST would take hundreds of calls (year → make → model → options → vehicle). The backend loads the dataset into memory instead: the Render build step downloads it, and the app re-downloads it at boot if it is missing or older than 30 days. Searches don't wait on any EPA network call.
-2. **Brand picker = a curated list of 38 current brands** (`PICKER_BRANDS` in vehicles.py, chosen by the owner; it replaced the NHTSA vPIC list, which showed defunct makes like Eagle and Yugo). It only limits the picker: "any brand" searches still use every EPA make. EPA spelling variants ("Mini"/"MINI") are merged.
+2. **Brands = a curated list of 38 current brands** (`PICKER_BRANDS` in vehicles.py, chosen by the owner; it replaced the NHTSA vPIC list, which showed defunct makes like Eagle and Yugo). The catalog is limited to these brands, so "any brand" searches only return them too. EPA spelling variants ("Mini"/"MINI") are merged.
 3. **Body types:**
    - Trucks, SUVs, minivans and wagons come from the EPA vehicle class.
    - For cars, the style comes from EPA interior volumes: 2-door → Coupe, 4-door → Sedan, hatchback volume → Hatchback. Model-name hints (Convertible/Roadster, Wagon/Avant) fill in where volumes are missing.

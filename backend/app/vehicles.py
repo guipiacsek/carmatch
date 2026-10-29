@@ -1,4 +1,4 @@
-"""Vehicle catalog: fueleconomy.gov dataset (grounding for all candidates) and the brand picker list."""
+"""Vehicle catalog: fueleconomy.gov dataset (grounding for all candidates), limited to the brands CarMatch offers."""
 
 import asyncio
 import csv
@@ -21,8 +21,8 @@ log = logging.getLogger(__name__)
 # The fueleconomy.gov web services' full dataset (same data as /ws/rest/vehicle/*), downloaded once instead of
 # thousands of per-vehicle calls per request.
 FE_DATASET_URL = "https://www.fueleconomy.gov/feg/epadata/vehicles.csv.zip"
-# Brands offered in the wizard's brand picker (EPA spellings). Other makes can still appear in "any brand" results.
-PICKER_BRANDS = frozenset(
+# The only brands CarMatch offers or recommends (EPA spellings); other makes are dropped from the catalog.
+BRANDS = frozenset(
     {
         "Acura", "Alfa Romeo", "Aston Martin", "Audi", "BMW", "Buick", "Cadillac", "Chevrolet", "Chrysler", "Dodge",
         "Ferrari", "Fiat", "Ford", "Genesis", "GMC", "Honda", "Hyundai", "Infiniti", "Jaguar", "Jeep", "Kia",
@@ -200,8 +200,7 @@ def parse_rows(rows: "csv.DictReader[str]") -> list[Vehicle]:
 class Catalog:
     def __init__(self) -> None:
         self.vehicles: list[Vehicle] = []
-        self.makes: list[str] = []  # the brand picker
-        self.known_makes: set[str] = set()  # every make in the data
+        self.makes: list[str] = []
         self.fuels_by_model: dict[tuple[str, str], set[str]] = {}
         self._ready = asyncio.Event()
 
@@ -212,11 +211,10 @@ class Catalog:
         vehicles = [
             v if canonical[v.make.lower()] == v.make else replace(v, make=canonical[v.make.lower()]) for v in vehicles
         ]
-        self.vehicles = vehicles
-        self.known_makes = {v.make for v in vehicles}
-        self.makes = sorted(self.known_makes & PICKER_BRANDS, key=str.lower)
+        self.vehicles = [v for v in vehicles if v.make in BRANDS]
+        self.makes = sorted({v.make for v in self.vehicles}, key=str.lower)
         self.fuels_by_model = {}
-        for v in vehicles:
+        for v in self.vehicles:
             self.fuels_by_model.setdefault((v.make, v.base_model), set()).add(v.fuel)
         self._ready.set()
 
