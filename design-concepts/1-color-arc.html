@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CarMatch · Concept 1: Color Arc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#ececec; --panel:#f6f6f6; --ink:#1d1d1f; --muted:#8a8a8f; --line:#dcdcdc; --red:#d42e2e; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:Montserrat,system-ui,sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; }
+  .app { display:grid; grid-template-columns:72px 1fr; min-height:100vh; }
+  .rail { display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:28px 0; }
+  .logo { font-weight:800; font-size:26px; letter-spacing:-1px; }
+  .rail nav { display:grid; gap:22px; }
+  .rail button { all:unset; cursor:pointer; color:var(--muted); display:grid; place-items:center; width:40px; height:40px; border-radius:12px; }
+  .rail button[aria-current] { color:var(--ink); background:#fff; box-shadow:0 4px 14px #0001; }
+  main { padding:28px 32px 120px 8px; overflow:hidden; }
+  header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:28px; }
+  header h1 { font-size:clamp(28px,4vw,44px); font-weight:700; display:flex; align-items:center; gap:10px; }
+  header h1 small { font-size:14px; font-weight:300; color:var(--muted); display:block; }
+  .pill { margin-left:auto; display:flex; gap:12px; }
+  .save { background:var(--red); color:#fff; border:0; font:700 18px Montserrat; padding:16px 30px; border-radius:22px; cursor:pointer; box-shadow:0 10px 30px #d42e2e40; }
+  .share { background:#fff; border:0; width:58px; border-radius:18px; cursor:pointer; box-shadow:0 6px 20px #0001; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:-12px 0 24px; }
+  .chips span { font-size:12px; font-weight:500; background:#fff; border-radius:99px; padding:6px 12px; color:#555; }
+  .rail-row { display:flex; gap:22px; overflow-x:auto; scroll-snap-type:x mandatory; padding:8px 4px 24px; scrollbar-width:none; }
+  .card { --c:#9a9a9a; flex:0 0 290px; scroll-snap-align:start; background:var(--panel); border-radius:26px; overflow:hidden; position:relative; cursor:pointer; transition:transform .25s, box-shadow .25s; box-shadow:0 2px 0 #0000000a; }
+  .card:hover, .card:focus-visible { transform:translateY(-6px); box-shadow:0 22px 40px #0000001a; outline:none; }
+  .arc { position:relative; height:300px; }
+  .arc::before { content:""; position:absolute; left:-40px; top:-60px; width:320px; height:380px; background:var(--c); border-radius:0 0 300px 0; opacity:.92; }
+  .arc img { position:absolute; right:-36px; top:46px; width:270px; height:140px; object-fit:cover; border-radius:18px; box-shadow:0 18px 30px #0003; }
+  .rank { position:absolute; left:18px; top:16px; color:#fff; font-weight:800; font-size:13px; letter-spacing:2px; }
+  .name { position:absolute; left:18px; bottom:18px; color:#fff; }
+  .name { right:52px; line-height:1.05; } .name b { font-weight:800; font-size:22px; display:block; } .name span { font-weight:200; font-size:24px; letter-spacing:1px; text-transform:uppercase; display:block; }
+  .name small { display:block; font-size:12px; opacity:.85; font-weight:300; }
+  .heart { position:absolute; right:16px; bottom:18px; background:none; border:0; color:#fff; cursor:pointer; }
+  .body { padding:18px 18px 22px; display:grid; gap:14px; }
+  .label { font-size:10px; font-weight:700; letter-spacing:1.6px; color:#555; }
+  .icons { display:flex; gap:10px; }
+  .icons span { width:46px; height:46px; border-radius:50%; background:#e7e7e7; display:grid; place-items:center; font-size:10px; font-weight:700; color:#666; text-align:center; line-height:1.1; }
+  .icons span:first-child { background:var(--c); color:#fff; }
+  .box { border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:12px; display:grid; gap:8px; }
+  .box dt { font-size:9px; letter-spacing:1px; color:var(--muted); font-weight:700; }
+  .box dd { font-weight:500; }
+  .over { color:var(--red); font-weight:700; font-size:10px; margin-left:6px; }
+  .credit { font-size:9px; color:var(--muted); padding:0 18px 14px; }
+  .credit a { color:inherit; }
+  .controls { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:#8c8c8c; border-radius:6px; display:flex; gap:4px; padding:6px; box-shadow:0 10px 30px #0003; }
+  .controls button { all:unset; cursor:pointer; color:#fff; padding:6px 12px; font-size:14px; border-radius:4px; }
+  .controls button:hover { background:#ffffff22; }
+  dialog { margin:auto; border:0; border-radius:28px; padding:0; width:min(760px,94vw); background:var(--panel); box-shadow:0 40px 80px #0004; }
+  dialog::backdrop { background:#1d1d1f66; backdrop-filter:blur(4px); }
+  .d-top { --c:#999; background:var(--c); color:#fff; padding:28px; display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:center; }
+  .d-top img { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:18px; }
+  .d-top h2 span { font-weight:200; text-transform:uppercase; display:block; font-size:22px; } .d-top h2 b { font-size:32px; }
+  .d-body { padding:24px 28px 28px; display:grid; gap:18px; }
+  .grid2 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .grid2 div { background:#fff; border-radius:14px; padding:12px; } .grid2 small { font-size:10px; color:var(--muted); display:block; }
+  .skel { height:12px; border-radius:6px; background:linear-gradient(90deg,#e4e4e4,#f2f2f2,#e4e4e4); background-size:200% 100%; animation:sh 1.2s infinite; }
+  @keyframes sh { to { background-position:-200% 0 } }
+  .close { position:absolute; right:16px; top:14px; background:#0003; color:#fff; border:0; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:18px; }
+  footer { font-size:11px; color:var(--muted); margin-top:18px; }
+  @media (max-width:640px) { .app { grid-template-columns:1fr; } .rail { display:none; } main { padding:20px 0 120px 16px; } .d-top { grid-template-columns:1fr; } .grid2 { grid-template-columns:repeat(2,1fr); } .pill { margin-left:0; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="logo">c.</div>
+    <nav aria-label="Main">
+      <button aria-label="New search">☰</button>
+      <button aria-current="page" aria-label="Results">◫</button>
+      <button aria-label="Favorites">♡</button>
+      <button aria-label="Compare">⇄</button>
+    </nav>
+    <small style="font-size:10px;color:var(--muted);writing-mode:vertical-rl">CarMatch</small>
+  </aside>
+  <main>
+    <header>
+      <h1>Your matches <span style="font-weight:300;font-size:.6em">⌄</span></h1>
+      <div class="pill"><button class="save">Save</button><button class="share" aria-label="Share results">⇪</button></div>
+    </header>
+    <div class="chips"><span>Used</span><span>SUV · Wagon</span><span>≤ $30,000</span><span>AWD</span><span>Family · Reliability</span></div>
+    <div class="rail-row" id="row" tabindex="0" aria-label="Ranked results, scroll sideways"></div>
+    <footer>Prices are AI estimates, not offers. Data: fueleconomy.gov (EPA/DOE). Photos: Wikimedia Commons, credited per card.</footer>
+  </main>
+</div>
+<div class="controls" aria-label="Browse">
+  <button id="prev" aria-label="Previous">◁</button><button id="next" aria-label="Next">▷</button><button aria-label="Compare selected">⇄ Compare</button>
+</div>
+<dialog id="d"></dialog>
+<script>
+const CARS = [{"year":2021,"make":"Toyota","model":"RAV4 Hybrid","fuel":"Hybrid","body":"SUV","mpg":40,"mpge":null,"drive":"AWD","seats":5,"price":[26000,31000],"score":94,"over":false,"bullets":["40 MPG combined with standard AWD","Toyota's reliability record","Roomy cargo for family gear"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/2021_Toyota_RAV4_PHV.jpg/500px-2021_Toyota_RAV4_PHV.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"TTTNIS, CC0","page":"https://commons.wikimedia.org/wiki/File:2021_Toyota_RAV4_PHV.jpg"},{"year":2022,"make":"Honda","model":"CR-V Hybrid","fuel":"Hybrid","body":"SUV","mpg":38,"mpge":null,"drive":"AWD","seats":5,"price":[27000,32000],"score":92,"over":false,"bullets":["Huge rear seat and cargo area","38 MPG combined, smooth ride","Strong resale value"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/2022_Honda_CR-V_1.5_Turbo_Prestige%2C_IIMS_Hybrid%2C_Grand_City%2C_Central_Surabaya.jpg/500px-2022_Honda_CR-V_1.5_Turbo_Prestige%2C_IIMS_Hybrid%2C_Grand_City%2C_Central_Surabaya.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Alex Neman, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Honda_CR-V_1.5_Turbo_Prestige,_IIMS_Hybrid,_Grand_City,_Central_Surabaya.jpg"},{"year":2021,"make":"Mazda","model":"CX-5","fuel":"Gas","body":"SUV","mpg":28,"mpge":null,"drive":"AWD","seats":5,"price":[22000,27000],"score":89,"over":false,"bullets":["Upscale cabin for the price","Sharp handling, available AWD","Well under your budget"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/2022_Mazda_CX-5_2.0_front.jpg/500px-2022_Mazda_CX-5_2.0_front.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"ShangTW, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Mazda_CX-5_2.0_front.jpg"},{"year":2022,"make":"Hyundai","model":"Tucson Hybrid","fuel":"Hybrid","body":"SUV","mpg":38,"mpge":null,"drive":"AWD","seats":5,"price":[24000,29000],"score":88,"over":false,"bullets":["38 MPG with standard AWD","Long warranty coverage","Tech-rich interior"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/2022_Hyundai_Tucson_Hybrid.jpg/500px-2022_Hyundai_Tucson_Hybrid.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"UltraTech66, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Hyundai_Tucson_Hybrid.jpg"},{"year":2021,"make":"Subaru","model":"Forester","fuel":"Gas","body":"SUV","mpg":29,"mpge":null,"drive":"AWD","seats":5,"price":[21000,26000],"score":86,"over":false,"bullets":["Standard AWD, great visibility","Top safety scores","Easy to load and park"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/3/33/2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_%28White%29.jpg/500px-2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_%28White%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Comyu, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_(White).jpg"},{"year":2023,"make":"Kia","model":"Sportage","fuel":"Gas","body":"SUV","mpg":28,"mpge":null,"drive":"AWD","seats":5,"price":[24000,29000],"score":84,"over":false,"bullets":["Class-leading rear legroom","Bold design, big screens","Warranty transfers in part"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/2023_Kia_Sportage_%28NQ5%29_in_White%2C_front_left.jpg/500px-2023_Kia_Sportage_%28NQ5%29_in_White%2C_front_left.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Benespit, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2023_Kia_Sportage_(NQ5)_in_White,_front_left.jpg"},{"year":2021,"make":"Toyota","model":"RAV4 Prime","fuel":"Plug-in Hybrid","body":"SUV","mpg":38,"mpge":94,"drive":"AWD","seats":5,"price":[33000,38000],"score":82,"over":true,"bullets":["42 electric miles per charge","Quickest RAV4, 302 hp","Above budget but efficient"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg/500px-2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Bull-Doser, Public domain","page":"https://commons.wikimedia.org/wiki/File:2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg"},{"year":2020,"make":"Subaru","model":"Outback","fuel":"Gas","body":"Wagon","mpg":29,"mpge":null,"drive":"AWD","seats":5,"price":[20000,25000],"score":80,"over":false,"bullets":["Wagon practicality, SUV clearance","Standard AWD","Comfortable on long trips"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/2020_Subaru_Outback_AWD%2C_front.jpg/500px-2020_Subaru_Outback_AWD%2C_front.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Kevauto, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2020_Subaru_Outback_AWD,_front.jpg"},{"year":2019,"make":"Honda","model":"Pilot","fuel":"Gas","body":"SUV","mpg":22,"mpge":null,"drive":"AWD","seats":8,"price":[23000,28000],"score":78,"over":false,"bullets":["Seats eight for growing families","Smooth V6, strong towing","Reliable, roomy third row"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg/500px-2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Kevauto, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg"}];
+const PALETTE = ["#9a9a9a", "#c94848", "#d6ae55", "#3e4877"];
+const usd = n => "$" + Math.round(n / 1000) + "k";
+const eff = c => c.mpge ? `${c.mpg}/${c.mpge}e` : c.mpg;
+const row = document.getElementById("row"), d = document.getElementById("d");
+row.innerHTML = CARS.map((c, i) => `
+  <article class="card" tabindex="0" style="--c:${PALETTE[i % 4]}" data-i="${i}" aria-label="${c.year} ${c.make} ${c.model}, open details">
+    <div class="arc">
+      <div class="rank">#${i + 1} · ${c.score}%</div>
+      <img src="${c.img}" alt="" loading="lazy">
+      <div class="name"><span>${c.make}</span> <b>${c.model}</b><small>${c.year}</small></div>
+      <button class="heart" aria-label="Save">♡</button>
+    </div>
+    <div class="body">
+      <div class="label">MORE INFORMATION</div>
+      <div class="icons"><span>${c.fuel.replace("Plug-in ", "PHEV ").split(" ")[0]}</span><span>${c.drive}</span><span>${c.seats}<br>seats</span><span>${eff(c)}<br>mpg</span></div>
+      <div class="label">AI ESTIMATE${c.over ? '<span class="over">ABOVE BUDGET</span>' : ""}</div>
+      <dl class="box"><div><dt>PRICE RANGE</dt><dd>${usd(c.price[0])} – ${usd(c.price[1])}</dd></div><div><dt>WHY IT FITS</dt><dd>${c.bullets[0]}</dd></div></dl>
+    </div>
+    <p class="credit">Photo: <a href="${c.page}" target="_blank" rel="noopener">${c.credit}</a></p>
+  </article>`).join("");
+function open(i) {
+  const c = CARS[i];
+  d.innerHTML = `<button class="close" aria-label="Close">×</button>
+    <div class="d-top" style="--c:${PALETTE[i % 4]}"><img src="${c.img}" alt="${c.year} ${c.make} ${c.model}">
+      <h2><span>${c.make}</span><b>${c.model}</b><br><small style="font-weight:300">${c.year} · #${i + 1} match · ${c.score}%</small></h2></div>
+    <div class="d-body">
+      <div class="grid2"><div><small>AI price</small>${usd(c.price[0])}–${usd(c.price[1])}</div><div><small>EPA combined</small>${eff(c)} mpg</div><div><small>Drivetrain</small>${c.drive}</div><div><small>Seats</small>${c.seats}</div></div>
+      <div><div class="label" style="margin-bottom:8px">AI OVERVIEW · RESEARCHING THIS CAR…</div><div class="skel"></div><div class="skel" style="width:85%;margin-top:8px"></div><div class="skel" style="width:60%;margin-top:8px"></div></div>
+      <div><div class="label" style="margin-bottom:6px">WHY IT FITS YOU</div>${c.bullets.map(b => `<p style="font-size:14px;margin:4px 0">— ${b}</p>`).join("")}</div>
+      <button class="save" style="justify-self:start;font-size:15px;padding:12px 22px">See on Cars.com ↗</button>
+    </div>`;
+  d.querySelector(".close").onclick = () => d.close();
+  d.showModal();
+}
+row.addEventListener("click", e => { const card = e.target.closest(".card"); if (card && !e.target.closest("button")) open(+card.dataset.i); });
+row.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.classList.contains("card")) open(+e.target.dataset.i); });
+d.addEventListener("click", e => { if (e.target === d) d.close(); });
+document.getElementById("next").onclick = () => row.scrollBy({ left: 312, behavior: "smooth" });
+document.getElementById("prev").onclick = () => row.scrollBy({ left: -312, behavior: "smooth" });
+</script>
+</body>
+</html>

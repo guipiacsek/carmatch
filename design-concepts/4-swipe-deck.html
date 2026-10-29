@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CarMatch · Concept 4: Swipe Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#18181b; --muted:#71717a; --pink:#ff4d6d; --blue:#3a6df0; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:"DM Sans",system-ui,sans-serif; color:var(--ink); min-height:100vh; display:grid; place-items:center; gap:40px; padding:32px 16px;
+    background:radial-gradient(circle at 20% 10%,#ffe3ea,transparent 40%),radial-gradient(circle at 90% 80%,#dfe8ff,transparent 45%),#f7f7f9; grid-template-columns:minmax(0,420px); }
+  @media (min-width:900px) { body { grid-template-columns:340px 420px; justify-content:center; } }
+  .pitch h1 { font-size:40px; letter-spacing:-1.5px; line-height:1; } .pitch h1 span { color:var(--pink); }
+  .pitch p { color:var(--muted); margin:14px 0; line-height:1.5; } .pitch li { margin:8px 0; color:#3f3f46; }
+  .phone { width:100%; max-width:400px; height:min(820px,92vh); background:#fff; border-radius:48px; box-shadow:0 0 0 12px #111, 0 40px 80px #0003; overflow:hidden; position:relative; display:flex; flex-direction:column; }
+  .bar { display:flex; justify-content:space-between; align-items:center; padding:22px 22px 10px; }
+  .bar b { font-size:20px; } .bar b span { color:var(--pink); }
+  .count { font-size:13px; color:var(--muted); background:#f4f4f5; padding:6px 12px; border-radius:99px; }
+  .progress { display:flex; gap:4px; padding:0 22px; } .progress i { flex:1; height:4px; border-radius:2px; background:#e4e4e7; } .progress i.on { background:var(--ink); }
+  .deck { flex:1; position:relative; margin:14px 18px 0; }
+  .card { position:absolute; inset:0; border-radius:30px; overflow:hidden; background:#000; color:#fff; box-shadow:0 20px 40px #0002; touch-action:pan-y; user-select:none; transition:transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s; cursor:grab; }
+  .card img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
+  .card::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,#0000 35%,#000d 100%); }
+  .card .info { position:absolute; left:0; right:0; bottom:0; padding:22px; z-index:1; display:grid; gap:10px; }
+  .card h2 { font-size:30px; letter-spacing:-1px; line-height:1; } .card h2 small { display:block; font-size:14px; font-weight:500; opacity:.8; letter-spacing:0; margin-bottom:4px; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; } .tags span { background:#ffffff26; backdrop-filter:blur(6px); padding:6px 10px; border-radius:99px; font-size:12px; }
+  .score { position:absolute; top:16px; left:16px; z-index:1; background:#fff; color:var(--ink); font-weight:700; padding:8px 12px; border-radius:99px; font-size:13px; }
+  .price { position:absolute; top:16px; right:16px; z-index:1; background:#000a; padding:8px 12px; border-radius:14px; font-size:12px; text-align:right; } .price b { display:block; font-size:16px; }
+  .stamp { position:absolute; top:70px; z-index:2; font-weight:700; font-size:28px; padding:6px 14px; border:4px solid; border-radius:10px; opacity:0; transform:rotate(-12deg); }
+  .stamp.save { left:24px; color:#4ade80; } .stamp.skip { right:24px; color:var(--pink); transform:rotate(12deg); }
+  .actions { display:flex; justify-content:center; gap:18px; padding:18px 0 22px; }
+  .actions button { width:62px; height:62px; border-radius:50%; border:0; background:#fff; box-shadow:0 8px 20px #0000001f; font-size:24px; cursor:pointer; transition:transform .15s; }
+  .actions button:active { transform:scale(.92); } .actions .like { width:72px; height:72px; color:var(--pink); font-size:30px; } .actions .skip { color:#a1a1aa; } .actions .info { color:var(--blue); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; height:78%; background:#fff; border-radius:30px 30px 0 0; box-shadow:0 -20px 50px #0003; transform:translateY(105%); transition:transform .35s cubic-bezier(.2,.8,.2,1); z-index:5; padding:12px 22px 22px; overflow-y:auto; }
+  .sheet.open { transform:none; } .grab { width:44px; height:5px; border-radius:3px; background:#d4d4d8; margin:0 auto 16px; }
+  .sheet h3 { font-size:24px; letter-spacing:-.5px; } .facts { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:16px 0; }
+  .facts div { background:#f4f4f5; border-radius:16px; padding:12px; font-weight:700; } .facts small { display:block; color:var(--muted); font-weight:500; font-size:12px; }
+  .skel { height:11px; border-radius:6px; background:linear-gradient(90deg,#ececee,#f7f7f8,#ececee); background-size:200% 100%; animation:sh 1.2s infinite; margin:8px 0; } @keyframes sh { to { background-position:-200% 0 } }
+  .go { width:100%; background:var(--ink); color:#fff; border:0; border-radius:16px; padding:15px; font:700 15px "DM Sans"; margin-top:14px; cursor:pointer; }
+  .done { position:absolute; inset:0; display:grid; place-content:center; text-align:center; gap:10px; color:var(--muted); }
+  .credit { font-size:10px; opacity:.6; } .credit a { color:inherit; }
+</style>
+</head>
+<body>
+<section class="pitch">
+  <h1>Car<span>Match</span><br>swipe mode</h1>
+  <p>A mobile-first take on the results page: one car at a time, full-bleed photo, decide fast.</p>
+  <ul><li>→ Swipe right or ♥ saves to favorites</li><li>← Swipe left or ✕ skips</li><li>ⓘ or tap opens the AI details sheet</li><li>After 9, see your shortlist and compare</li></ul>
+</section>
+<div class="phone" role="application" aria-label="Swipe through matches">
+  <div class="bar"><b>Car<span>Match</span></b><span class="count" id="count"></span></div>
+  <div class="progress" id="progress"></div>
+  <div class="deck" id="deck"></div>
+  <div class="actions"><button class="skip" id="skip" aria-label="Skip">✕</button><button class="like" id="like" aria-label="Save">♥</button><button class="info" id="info" aria-label="Details">ⓘ</button></div>
+  <div class="sheet" id="sheet" aria-hidden="true"></div>
+</div>
+<script>
+const CARS = [{"year":2021,"make":"Toyota","model":"RAV4 Hybrid","fuel":"Hybrid","body":"SUV","mpg":40,"mpge":null,"drive":"AWD","seats":5,"price":[26000,31000],"score":94,"over":false,"bullets":["40 MPG combined with standard AWD","Toyota's reliability record","Roomy cargo for family gear"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/2021_Toyota_RAV4_PHV.jpg/500px-2021_Toyota_RAV4_PHV.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"TTTNIS, CC0","page":"https://commons.wikimedia.org/wiki/File:2021_Toyota_RAV4_PHV.jpg"},{"year":2022,"make":"Honda","model":"CR-V Hybrid","fuel":"Hybrid","body":"SUV","mpg":38,"mpge":null,"drive":"AWD","seats":5,"price":[27000,32000],"score":92,"over":false,"bullets":["Huge rear seat and cargo area","38 MPG combined, smooth ride","Strong resale value"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/2022_Honda_CR-V_1.5_Turbo_Prestige%2C_IIMS_Hybrid%2C_Grand_City%2C_Central_Surabaya.jpg/500px-2022_Honda_CR-V_1.5_Turbo_Prestige%2C_IIMS_Hybrid%2C_Grand_City%2C_Central_Surabaya.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Alex Neman, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Honda_CR-V_1.5_Turbo_Prestige,_IIMS_Hybrid,_Grand_City,_Central_Surabaya.jpg"},{"year":2021,"make":"Mazda","model":"CX-5","fuel":"Gas","body":"SUV","mpg":28,"mpge":null,"drive":"AWD","seats":5,"price":[22000,27000],"score":89,"over":false,"bullets":["Upscale cabin for the price","Sharp handling, available AWD","Well under your budget"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/2022_Mazda_CX-5_2.0_front.jpg/500px-2022_Mazda_CX-5_2.0_front.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"ShangTW, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Mazda_CX-5_2.0_front.jpg"},{"year":2022,"make":"Hyundai","model":"Tucson Hybrid","fuel":"Hybrid","body":"SUV","mpg":38,"mpge":null,"drive":"AWD","seats":5,"price":[24000,29000],"score":88,"over":false,"bullets":["38 MPG with standard AWD","Long warranty coverage","Tech-rich interior"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/2022_Hyundai_Tucson_Hybrid.jpg/500px-2022_Hyundai_Tucson_Hybrid.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"UltraTech66, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Hyundai_Tucson_Hybrid.jpg"},{"year":2021,"make":"Subaru","model":"Forester","fuel":"Gas","body":"SUV","mpg":29,"mpge":null,"drive":"AWD","seats":5,"price":[21000,26000],"score":86,"over":false,"bullets":["Standard AWD, great visibility","Top safety scores","Easy to load and park"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/3/33/2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_%28White%29.jpg/500px-2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_%28White%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Comyu, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_(White).jpg"},{"year":2023,"make":"Kia","model":"Sportage","fuel":"Gas","body":"SUV","mpg":28,"mpge":null,"drive":"AWD","seats":5,"price":[24000,29000],"score":84,"over":false,"bullets":["Class-leading rear legroom","Bold design, big screens","Warranty transfers in part"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/2023_Kia_Sportage_%28NQ5%29_in_White%2C_front_left.jpg/500px-2023_Kia_Sportage_%28NQ5%29_in_White%2C_front_left.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Benespit, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2023_Kia_Sportage_(NQ5)_in_White,_front_left.jpg"},{"year":2021,"make":"Toyota","model":"RAV4 Prime","fuel":"Plug-in Hybrid","body":"SUV","mpg":38,"mpge":94,"drive":"AWD","seats":5,"price":[33000,38000],"score":82,"over":true,"bullets":["42 electric miles per charge","Quickest RAV4, 302 hp","Above budget but efficient"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg/500px-2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Bull-Doser, Public domain","page":"https://commons.wikimedia.org/wiki/File:2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg"},{"year":2020,"make":"Subaru","model":"Outback","fuel":"Gas","body":"Wagon","mpg":29,"mpge":null,"drive":"AWD","seats":5,"price":[20000,25000],"score":80,"over":false,"bullets":["Wagon practicality, SUV clearance","Standard AWD","Comfortable on long trips"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/2020_Subaru_Outback_AWD%2C_front.jpg/500px-2020_Subaru_Outback_AWD%2C_front.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Kevauto, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2020_Subaru_Outback_AWD,_front.jpg"},{"year":2019,"make":"Honda","model":"Pilot","fuel":"Gas","body":"SUV","mpg":22,"mpge":null,"drive":"AWD","seats":8,"price":[23000,28000],"score":78,"over":false,"bullets":["Seats eight for growing families","Smooth V6, strong towing","Reliable, roomy third row"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg/500px-2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Kevauto, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg"}];
+const k = n => "$" + Math.round(n / 1000) + "k";
+let i = 0; const saved = [];
+progress.innerHTML = CARS.map(() => "<i></i>").join("");
+function render() {
+  count.textContent = i < CARS.length ? `${i + 1} of ${CARS.length}` : `${saved.length} saved`;
+  progress.querySelectorAll("i").forEach((b, j) => b.classList.toggle("on", j < i));
+  if (i >= CARS.length) { deck.innerHTML = `<div class="done"><b style="font-size:22px;color:var(--ink)">That's all 9</b>You saved ${saved.length}. Compare them side by side?<button class="go">Compare shortlist</button></div>`; return; }
+  deck.innerHTML = CARS.slice(i, i + 2).reverse().map((c, j, arr) => {
+    const top = j === arr.length - 1;
+    return `<article class="card" style="transform:${top ? "none" : "scale(.95) translateY(14px)"};${top ? "" : "opacity:.7"}" ${top ? 'id="top" tabindex="0"' : ""}>
+      <img src="${c.img.replace("/500px-", "/960px-")}" alt="${c.year} ${c.make} ${c.model}"><span class="score">#${CARS.indexOf(c) + 1} · ${c.score}% match</span>
+      <span class="price">AI est.<b>${k(c.price[0])}–${k(c.price[1])}</b>${c.over ? "over budget" : ""}</span>
+      <span class="stamp save">SAVE</span><span class="stamp skip">SKIP</span>
+      <div class="info"><h2><small>${c.year} · ${c.make}</small>${c.model}</h2><div class="tags"><span>${c.mpg} MPG</span><span>${c.drive}</span><span>${c.seats} seats</span><span>${c.fuel}</span></div>
+      <p style="font-size:14px;opacity:.9">${c.bullets[0]}</p><span class="credit">Photo: <a href="${c.page}" target="_blank" rel="noopener">${c.credit}</a></span></div></article>`;
+  }).join("");
+  drag(document.getElementById("top"));
+}
+function next(dir) {
+  const top = document.getElementById("top"); if (!top) return;
+  if (dir > 0) saved.push(CARS[i]);
+  top.style.transform = `translateX(${dir * 140}%) rotate(${dir * 20}deg)`; top.style.opacity = 0;
+  i++; setTimeout(render, 260);
+}
+function drag(el) {
+  let x0 = null, dx = 0;
+  el.addEventListener("pointerdown", e => { x0 = e.clientX; el.setPointerCapture(e.pointerId); el.style.transition = "none"; });
+  el.addEventListener("pointermove", e => { if (x0 === null) return; dx = e.clientX - x0; el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
+    el.querySelector(".save").style.opacity = Math.max(0, dx / 120); el.querySelector(".skip").style.opacity = Math.max(0, -dx / 120); });
+  el.addEventListener("pointerup", () => { el.style.transition = ""; if (Math.abs(dx) > 110) next(Math.sign(dx)); else if (Math.abs(dx) < 5) openSheet(); else { el.style.transform = "none"; el.querySelectorAll(".stamp").forEach(s => s.style.opacity = 0); } x0 = null; dx = 0; });
+  el.addEventListener("keydown", e => { if (e.key === "ArrowRight") next(1); if (e.key === "ArrowLeft") next(-1); if (e.key === "Enter") openSheet(); });
+}
+function openSheet() {
+  const c = CARS[i]; if (!c) return;
+  sheet.innerHTML = `<div class="grab"></div><h3>${c.year} ${c.make} ${c.model}</h3><p style="color:var(--muted);font-size:14px;margin-top:4px">${c.score}% match · ${c.body}</p>
+    <div class="facts"><div><small>AI price</small>${k(c.price[0])}–${k(c.price[1])}</div><div><small>EPA MPG</small>${c.mpg}${c.mpge ? " · " + c.mpge + "e" : ""}</div><div><small>Drivetrain</small>${c.drive}</div><div><small>Seats</small>${c.seats}</div></div>
+    <b style="font-size:14px">✦ AI researching this car…</b><div class="skel"></div><div class="skel" style="width:84%"></div><div class="skel" style="width:60%"></div>
+    ${c.bullets.map(b => `<p style="margin:8px 0;font-size:14px">✓ ${b}</p>`).join("")}<button class="go">See on Cars.com ↗</button>
+    <button class="go" style="background:#f4f4f5;color:var(--ink)" onclick="closeSheet()">Back to swiping</button>`;
+  sheet.classList.add("open"); sheet.setAttribute("aria-hidden", "false");
+}
+function closeSheet() { sheet.classList.remove("open"); sheet.setAttribute("aria-hidden", "true"); }
+skip.onclick = () => next(-1); like.onclick = () => next(1); info.onclick = openSheet;
+addEventListener("keydown", e => e.key === "Escape" && closeSheet());
+render();
+</script>
+</body>
+</html>

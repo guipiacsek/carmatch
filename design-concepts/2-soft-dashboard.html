@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CarMatch · Concept 2: Soft Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#e9eaec; --card:#f4f5f6; --ink:#1c1d21; --muted:#7c7f87; --green:#1f9d63; --line:#ffffffcc; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { display:grid; grid-template-columns:76px 1fr; gap:20px; padding:24px; max-width:1360px; margin:auto; }
+  .soft { background:var(--card); border-radius:22px; box-shadow:8px 8px 22px #c9cbcf, -8px -8px 22px #ffffff; }
+  .rail { display:flex; flex-direction:column; gap:14px; padding:14px 10px; align-self:start; position:sticky; top:24px; }
+  .rail button { all:unset; cursor:pointer; width:52px; height:52px; display:grid; place-items:center; border-radius:16px; color:#555; font-size:20px; }
+  .rail button[aria-current] { background:#fff; box-shadow:inset 3px 3px 8px #d7d9dc, inset -3px -3px 8px #fff; color:var(--ink); }
+  .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:20px; }
+  .top { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; }
+  .top .icons { display:flex; gap:12px; }
+  .round { width:44px; height:44px; border-radius:50%; display:grid; place-items:center; border:0; cursor:pointer; background:var(--card); box-shadow:4px 4px 10px #cbcdd1,-4px -4px 10px #fff; font-size:16px; }
+  .hero { grid-column:1/9; padding:28px; display:grid; grid-template-columns:1fr 1.3fr; gap:16px; align-items:center; min-height:330px; position:relative; overflow:hidden; cursor:pointer; }
+  .hero h1 { font-size:clamp(28px,3.4vw,44px); line-height:1.05; letter-spacing:-1px; }
+  .hero p { color:var(--muted); margin:10px 0 18px; font-size:18px; }
+  .badge { display:inline-flex; align-items:center; gap:8px; background:#fff; border-radius:99px; padding:8px 14px; font-size:13px; font-weight:600; box-shadow:0 4px 10px #0000000d; }
+  .badge::before { content:""; width:9px; height:9px; border-radius:50%; background:var(--green); }
+  .hero img { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:20px; box-shadow:0 30px 40px -18px #0006; }
+  .hero .price { margin-top:18px; font-size:13px; color:var(--muted); } .hero .price b { display:block; font-size:24px; color:var(--ink); }
+  .assistant { grid-column:9/13; grid-row:span 2; padding:22px; display:flex; flex-direction:column; gap:14px; }
+  .assistant h2 { font-size:18px; display:flex; justify-content:space-between; align-items:center; }
+  .assistant .hint { color:var(--muted); font-size:13px; }
+  .actions { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .actions button { all:unset; cursor:pointer; background:#fff; border-radius:16px; padding:16px 10px; text-align:center; font-size:13px; font-weight:600; box-shadow:0 6px 14px #0000000a; }
+  .actions button span { display:block; font-size:20px; margin-bottom:6px; } .actions small { display:block; color:var(--muted); font-weight:500; }
+  .ask { margin-top:auto; background:#fff; border-radius:16px; padding:14px; font-size:13px; color:var(--muted); min-height:80px; }
+  .send { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .send button { background:#25272d; color:#fff; border:0; border-radius:12px; padding:11px 18px; font:600 13px Inter; cursor:pointer; }
+  .stat { grid-column:span 2; padding:22px; display:grid; gap:4px; }
+  .stat b { font-size:30px; letter-spacing:-.5px; } .stat small { color:var(--muted); font-size:13px; }
+  .panel { grid-column:span 4; padding:22px; display:grid; gap:12px; align-content:start; }
+  .panel h3 { font-size:15px; display:flex; justify-content:space-between; } .panel h3 small { color:var(--muted); font-weight:500; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; } .chips span { background:#fff; border-radius:99px; padding:7px 12px; font-size:12px; font-weight:500; }
+  .mini { display:flex; gap:12px; align-items:center; } .mini img { width:84px; height:56px; object-fit:cover; border-radius:12px; }
+  .mini b { display:block; font-size:14px; } .mini small { color:var(--muted); font-size:12px; }
+  .cta { background:var(--green); color:#fff; border:0; border-radius:14px; padding:12px; font:600 14px Inter; cursor:pointer; }
+  .recs { grid-column:1/10; padding:22px; }
+  .recs h3 { font-size:15px; margin-bottom:14px; display:flex; justify-content:space-between; }
+  .rec-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; }
+  .rec { background:#fff; border-radius:18px; padding:12px; cursor:pointer; transition:transform .2s; border:0; text-align:left; font:inherit; color:inherit; }
+  .rec:hover, .rec:focus-visible { transform:translateY(-3px); outline:2px solid #1f9d6355; }
+  .rec img { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:12px; }
+  .rec b { display:block; margin:10px 0 6px; font-size:14px; }
+  .rec .meta { display:flex; gap:10px; color:var(--muted); font-size:12px; } .rec .p { font-weight:700; margin-top:6px; font-size:14px; } .rec .p small { color:var(--muted); font-weight:500; }
+  .promo { grid-column:10/13; border-radius:22px; padding:24px; color:#fff; display:flex; flex-direction:column; justify-content:space-between; min-height:260px;
+    background:linear-gradient(180deg,#0006,#000a), radial-gradient(circle at 80% 20%,#6f8f7a 0,#0000 45%), linear-gradient(160deg,#41594b,#1b2620); }
+  .promo h3 { font-size:24px; line-height:1.15; } .promo button { align-self:start; background:#ffffff26; color:#fff; border:1px solid #fff5; border-radius:12px; padding:10px 16px; font:600 13px Inter; cursor:pointer; backdrop-filter:blur(6px); }
+  dialog { margin:auto; border:0; border-radius:26px; padding:0; width:min(720px,94vw); background:var(--card); }
+  dialog::backdrop { background:#1c1d2155; backdrop-filter:blur(3px); }
+  .dd { padding:26px; display:grid; gap:16px; } .dd img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:18px; }
+  .facts { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; } .facts div { background:#fff; border-radius:14px; padding:12px; font-weight:600; font-size:14px; } .facts small { display:block; color:var(--muted); font-weight:500; font-size:11px; }
+  .skel { height:12px; border-radius:6px; background:linear-gradient(90deg,#e1e3e6,#f3f4f5,#e1e3e6); background-size:200% 100%; animation:sh 1.2s infinite; } @keyframes sh { to { background-position:-200% 0 } }
+  footer { grid-column:1/-1; color:var(--muted); font-size:12px; }
+  @media (max-width:1000px) { .hero,.assistant,.recs,.promo,.panel { grid-column:1/-1; } .stat { grid-column:span 6; } .assistant { grid-row:auto; } }
+  @media (max-width:640px) { .wrap { grid-template-columns:1fr; padding:16px; } .rail { display:none; } .hero { grid-template-columns:1fr; } .facts { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="rail soft" aria-label="Main">
+    <button aria-label="Home">⌂</button><button aria-current="page" aria-label="Matches">🚗</button><button aria-label="Favorites">♡</button><button aria-label="Compare">⇄</button><button aria-label="Account">◯</button>
+  </nav>
+  <div class="grid" id="grid">
+    <div class="top"><div style="color:var(--muted);font-weight:600">CarMatch</div><div class="icons"><button class="round" aria-label="Share">⇪</button><button class="round" aria-label="Account">◯</button></div></div>
+    <section class="hero soft" id="hero" tabindex="0" aria-label="Best match, open details"></section>
+    <aside class="assistant soft">
+      <h2>AI Assistant <button class="round" aria-hidden="true" tabindex="-1">✦</button></h2>
+      <p class="hint">How can I help with these 9 matches?</p>
+      <div class="actions">
+        <button><span>⇄</span>Compare<small>top 3 side by side</small></button>
+        <button><span>⚖</span>Refine<small>cheaper · AWD only</small></button>
+        <button><span>🛡</span>Reliability<small>known issues</small></button>
+        <button><span>⇪</span>Share<small>link for 7 days</small></button>
+      </div>
+      <div class="ask">Which of these is best for a family of four that drives 15k miles a year?</div>
+      <div class="send"><span style="font-size:18px;color:var(--muted)">🎙 📎</span><button>Send ➤</button></div>
+    </aside>
+    <div class="stat soft"><b>9</b><small>matches found</small></div>
+    <div class="stat soft"><b id="avg"></b><small>avg EPA combined MPG</small></div>
+    <div class="stat soft"><b id="inb"></b><small>within your budget</small></div>
+    <div class="stat soft"><b>$30k</b><small>budget</small></div>
+    <div class="panel soft"><h3>Your search <small>Edit</small></h3><div class="chips"><span>Used</span><span>SUV</span><span>Wagon</span><span>≤ $30,000</span><span>AWD</span><span>Family</span><span>Reliability</span></div></div>
+    <div class="panel soft" id="value"></div>
+    <div class="panel soft"><h3>Saved <small>0 of 10</small></h3><p style="color:var(--muted);font-size:13px">Tap ♡ on a car to keep it. Sign in to sync favorites.</p><button class="cta">Sign in</button></div>
+    <section class="recs soft"><h3>Recommended for you <small style="color:var(--muted)">ranked by AI ›</small></h3><div class="rec-row" id="recs"></div></section>
+    <aside class="promo"><h3>Found the one?<br>Check listings near you</h3><p style="font-size:13px;opacity:.85">Live inventory on Cars.com, filtered to your match.</p><button>See listings ↗</button></aside>
+    <footer>Prices are AI estimates, not offers. Vehicle data: fueleconomy.gov. Photos: Wikimedia Commons contributors.</footer>
+  </div>
+</div>
+<dialog id="d"></dialog>
+<script>
+const CARS = [{"year":2021,"make":"Toyota","model":"RAV4 Hybrid","fuel":"Hybrid","body":"SUV","mpg":40,"mpge":null,"drive":"AWD","seats":5,"price":[26000,31000],"score":94,"over":false,"bullets":["40 MPG combined with standard AWD","Toyota's reliability record","Roomy cargo for family gear"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/2021_Toyota_RAV4_PHV.jpg/500px-2021_Toyota_RAV4_PHV.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"TTTNIS, CC0","page":"https://commons.wikimedia.org/wiki/File:2021_Toyota_RAV4_PHV.jpg"},{"year":2022,"make":"Honda","model":"CR-V Hybrid","fuel":"Hybrid","body":"SUV","mpg":38,"mpge":null,"drive":"AWD","seats":5,"price":[27000,32000],"score":92,"over":false,"bullets":["Huge rear seat and cargo area","38 MPG combined, smooth ride","Strong resale value"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/2022_Honda_CR-V_1.5_Turbo_Prestige%2C_IIMS_Hybrid%2C_Grand_City%2C_Central_Surabaya.jpg/500px-2022_Honda_CR-V_1.5_Turbo_Prestige%2C_IIMS_Hybrid%2C_Grand_City%2C_Central_Surabaya.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Alex Neman, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Honda_CR-V_1.5_Turbo_Prestige,_IIMS_Hybrid,_Grand_City,_Central_Surabaya.jpg"},{"year":2021,"make":"Mazda","model":"CX-5","fuel":"Gas","body":"SUV","mpg":28,"mpge":null,"drive":"AWD","seats":5,"price":[22000,27000],"score":89,"over":false,"bullets":["Upscale cabin for the price","Sharp handling, available AWD","Well under your budget"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/2022_Mazda_CX-5_2.0_front.jpg/500px-2022_Mazda_CX-5_2.0_front.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"ShangTW, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Mazda_CX-5_2.0_front.jpg"},{"year":2022,"make":"Hyundai","model":"Tucson Hybrid","fuel":"Hybrid","body":"SUV","mpg":38,"mpge":null,"drive":"AWD","seats":5,"price":[24000,29000],"score":88,"over":false,"bullets":["38 MPG with standard AWD","Long warranty coverage","Tech-rich interior"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/2022_Hyundai_Tucson_Hybrid.jpg/500px-2022_Hyundai_Tucson_Hybrid.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"UltraTech66, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2022_Hyundai_Tucson_Hybrid.jpg"},{"year":2021,"make":"Subaru","model":"Forester","fuel":"Gas","body":"SUV","mpg":29,"mpge":null,"drive":"AWD","seats":5,"price":[21000,26000],"score":86,"over":false,"bullets":["Standard AWD, great visibility","Top safety scores","Easy to load and park"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/3/33/2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_%28White%29.jpg/500px-2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_%28White%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Comyu, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2021_Tokyo_Marathon_Referee_car_Subaru_Forester_SK_E-Boxer_(White).jpg"},{"year":2023,"make":"Kia","model":"Sportage","fuel":"Gas","body":"SUV","mpg":28,"mpge":null,"drive":"AWD","seats":5,"price":[24000,29000],"score":84,"over":false,"bullets":["Class-leading rear legroom","Bold design, big screens","Warranty transfers in part"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/2023_Kia_Sportage_%28NQ5%29_in_White%2C_front_left.jpg/500px-2023_Kia_Sportage_%28NQ5%29_in_White%2C_front_left.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Benespit, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2023_Kia_Sportage_(NQ5)_in_White,_front_left.jpg"},{"year":2021,"make":"Toyota","model":"RAV4 Prime","fuel":"Plug-in Hybrid","body":"SUV","mpg":38,"mpge":94,"drive":"AWD","seats":5,"price":[33000,38000],"score":82,"over":true,"bullets":["42 electric miles per charge","Quickest RAV4, 302 hp","Above budget but efficient"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg/500px-2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Bull-Doser, Public domain","page":"https://commons.wikimedia.org/wiki/File:2021_Toyota_RAV4_Prime_au_SIAM_2020.jpg"},{"year":2020,"make":"Subaru","model":"Outback","fuel":"Gas","body":"Wagon","mpg":29,"mpge":null,"drive":"AWD","seats":5,"price":[20000,25000],"score":80,"over":false,"bullets":["Wagon practicality, SUV clearance","Standard AWD","Comfortable on long trips"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/2020_Subaru_Outback_AWD%2C_front.jpg/500px-2020_Subaru_Outback_AWD%2C_front.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Kevauto, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2020_Subaru_Outback_AWD,_front.jpg"},{"year":2019,"make":"Honda","model":"Pilot","fuel":"Gas","body":"SUV","mpg":22,"mpge":null,"drive":"AWD","seats":8,"price":[23000,28000],"score":78,"over":false,"bullets":["Seats eight for growing families","Smooth V6, strong towing","Reliable, roomy third row"],"img":"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg/500px-2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","credit":"Kevauto, CC BY-SA 4.0","page":"https://commons.wikimedia.org/wiki/File:2019_Honda_Pilot_EX-L_3.5L_front_1.5.19.jpg"}];
+const usd = n => "$" + n.toLocaleString("en-US");
+const k = n => "$" + Math.round(n / 1000) + "k";
+const d = document.getElementById("d");
+const best = CARS[0];
+document.getElementById("avg").textContent = Math.round(CARS.reduce((s, c) => s + c.mpg, 0) / CARS.length);
+document.getElementById("inb").textContent = CARS.filter(c => !c.over).length;
+document.getElementById("hero").innerHTML = `
+  <div><span class="badge">Best match · ${best.score}%</span><h1 style="margin-top:16px">${best.year} ${best.make}<br>${best.model}</h1>
+  <p>${best.bullets[0]}</p><div class="price">AI estimate<b>${usd(best.price[0])} – ${usd(best.price[1])}</b></div></div>
+  <img src="${best.img}" alt="${best.year} ${best.make} ${best.model}">`;
+const cheap = [...CARS].sort((a, b) => a.price[0] - b.price[0])[0];
+document.getElementById("value").innerHTML = `<h3>Best value <small>lowest estimate</small></h3>
+  <div class="mini"><img src="${cheap.img}" alt=""><div><b>${cheap.year} ${cheap.make} ${cheap.model}</b><small>${k(cheap.price[0])}–${k(cheap.price[1])} · ${cheap.mpg} MPG</small></div></div>`;
+document.getElementById("recs").innerHTML = CARS.slice(1).map((c, j) => `
+  <button class="rec" data-i="${j + 1}"><img src="${c.img}" alt="" loading="lazy"><b>${c.year} ${c.make} ${c.model}</b>
+  <div class="meta"><span>👤 ${c.seats}</span><span>⚙ ${c.drive}</span><span>⛽ ${c.mpge ? c.mpge + "e" : c.mpg}</span></div>
+  <div class="p">${k(c.price[0])}–${k(c.price[1])} <small>AI est.</small></div></button>`).join("");
+function open(i) {
+  const c = CARS[i];
+  d.innerHTML = `<div class="dd"><img src="${c.img}" alt="${c.year} ${c.make} ${c.model}">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:24px">${c.year} ${c.make} ${c.model}</h2><span class="badge">${c.score}% match</span></div>
+    <div class="facts"><div><small>AI price</small>${k(c.price[0])}–${k(c.price[1])}</div><div><small>EPA MPG</small>${c.mpg}${c.mpge ? " · " + c.mpge + "e" : ""}</div><div><small>Drivetrain</small>${c.drive}</div><div><small>Seats</small>${c.seats}</div></div>
+    <div style="display:grid;gap:8px"><b style="font-size:14px">✦ AI is researching this car…</b><div class="skel"></div><div class="skel" style="width:80%"></div><div class="skel" style="width:55%"></div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="cta">See on Cars.com ↗</button><button class="cta" style="background:#25272d" onclick="d.close()">Close</button></div>
+    <small style="color:var(--muted)">Photo: <a href="${c.page}" target="_blank" rel="noopener" style="color:inherit">${c.credit}</a></small></div>`;
+  d.showModal();
+}
+document.getElementById("hero").addEventListener("click", () => open(0));
+document.getElementById("hero").addEventListener("keydown", e => e.key === "Enter" && open(0));
+document.getElementById("recs").addEventListener("click", e => { const r = e.target.closest(".rec"); if (r) open(+r.dataset.i); });
+d.addEventListener("click", e => { if (e.target === d) d.close(); });
+</script>
+</body>
+</html>
