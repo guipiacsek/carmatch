@@ -86,14 +86,15 @@ class RecommendResponse(BaseModel):
 
 
 class LLMPick(BaseModel):
+    # Field order is generation order: facts (seats, price) come before the fit judgment.
     id: str
-    rank: int = Field(ge=1, le=9)
-    match_score: int = Field(ge=0, le=100)
+    seats: int = Field(ge=1, le=15)
     estimated_price_min: int = Field(ge=0)
     estimated_price_max: int = Field(ge=0)
-    seats: int = Field(ge=1, le=15)
+    rank: int = Field(ge=1, le=10)
+    match_score: int = Field(ge=0, le=100)
     bullets: list[str] = Field(min_length=3, max_length=3)
 
 
 class LLMResponse(BaseModel):
-    picks: list[LLMPick] = Field(min_length=1, max_length=9)
+    picks: list[LLMPick] = Field(min_length=1, max_length=10)

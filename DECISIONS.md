@@ -47,6 +47,17 @@ These are choices the brief didn't settle, made while building the app autonomou
 23. **`car_data` is capped at 16 KB** and `car_key` at 200 characters, so the jsonb column can't be abused.
 24. **SQL tests run on PGlite** (in-process Postgres 17 under Node) with a minimal stub of Supabase's `auth` schema and roles. They need no local Postgres or Supabase CLI.
 
+## Lessons from live GPT testing
+
+34. **The model bends facts toward the shopper.** Shown `min_seats: 7`, gpt-4.1-mini claimed 5-seat SUVs seat 7. Shown a budget, it priced cars down to fit. Fixes:
+    - `min_seats` is no longer sent to the model; code enforces it.
+    - The schema asks for seats and price before rank and score, since structured outputs generate fields in order.
+    - The prompt says estimates must be a neutral appraiser's values.
+    - The model returns 3 spare picks so dropped ones still leave 7.
+35. **Used = up to the current model year** (next year's cars aren't on the used market). Used searches offer two years per model spread across the range, skipping the newest.
+36. **Data-only backfill never claims more seats than the class typically has** (large SUVs count as 5, minivans as 7), and is skipped when that's below `min_seats`. Exotic makes are demoted when the budget is under $100k.
+37. **Commons photos:** the closest-year photo within 15 years wins (long-running generations like the Durango only have older photos). Lookups run 3 at a time, per Wikimedia's API etiquette.
+
 ## Hosting
 
 33. **No Docker.** Render runs the backend on its native Python runtime (`render.yaml`: pip install, then uvicorn). The stack is just GitHub, Vercel, Render and Supabase.

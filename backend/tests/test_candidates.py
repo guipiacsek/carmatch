@@ -91,3 +91,12 @@ def test_relaxation_skips_unset_constraints_and_keeps_hard_ones() -> None:
     cands, relaxed = build_candidates(vs, prefs(body_types=["Truck"]), fuels(vs))
     assert relaxed == ["year range"]  # no brand/drivetrain set, so only years can be relaxed
     assert [c.model for c in cands] == ["F150 Pickup"]  # body type is never relaxed
+
+
+def test_used_skips_newest_year_and_spreads_two_years() -> None:
+    vs = fleet()
+    used, _ = build_candidates(vs, prefs(body_types=["SUV"], condition="used"), fuels(vs))
+    rav = sorted(c.year for c in used if c.model == "RAV4")
+    assert len(rav) == 2 and 2024 not in rav  # 2015-2024 offered; newest skipped
+    new, _ = build_candidates(vs, prefs(body_types=["SUV"], condition="either"), fuels(vs))
+    assert max(c.year for c in new if c.model == "RAV4") == 2024

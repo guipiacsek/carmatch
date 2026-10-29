@@ -34,6 +34,21 @@ LUXURY_MAKES = {
     "Tesla",
     "Volvo",
 }
+EXOTIC_MAKES = {
+    "Aston Martin",
+    "Bentley",
+    "Bugatti",
+    "Ferrari",
+    "Koenigsegg",
+    "Lamborghini",
+    "Lucid",
+    "Maserati",
+    "Maybach",
+    "McLaren Automotive",
+    "Pagani",
+    "Rolls-Royce",
+    "Spyker",
+}
 RELIABLE_MAKES = {"Toyota", "Lexus", "Honda", "Acura", "Mazda", "Subaru", "Kia", "Hyundai"}
 
 BODY_DISPLAY_ORDER = ["Convertible", "Coupe", "Hatchback", "Wagon", "Minivan", "Truck", "SUV", "Sedan", "Compact"]
@@ -70,6 +85,8 @@ def year_bounds(p: Preferences, relax: Relax) -> tuple[int, int]:
     lo, hi = (MIN_YEAR, MAX_YEAR) if relax.years else (p.year_min, p.year_max)
     if p.condition == "new":
         lo = max(lo, MAX_YEAR - 2)  # next, current and leftover prior model year are sold new
+    elif p.condition == "used":
+        hi = min(hi, MAX_YEAR - 1)  # next model year cars aren't on the used market yet
     return lo, hi
 
 
@@ -118,6 +135,10 @@ def heuristic(c: Candidate, p: Preferences) -> float:
         s += 2 * (c.make in LUXURY_MAKES)
     if "reliability" in pr:
         s += 1.5 * (c.make in RELIABLE_MAKES)
+    if p.min_seats > 5:  # 3-row seating is mostly large SUVs and minivans; small SUVs rarely qualify
+        s += 2 * (any(k in c.vclass for k in ("Standard Sport Utility", "Minivan", "Vans")))
+    if p.budget < 100_000:
+        s -= 3 * (c.make in EXOTIC_MAKES)
     return s
 
 
@@ -162,7 +183,11 @@ def group(
 
 
 def diversify(cands: list[Candidate], p: Preferences, limit: int = MAX_CANDIDATES) -> list[Candidate]:
-    """Keep <=2 model years per model (newest + a mid-range year for used), then round-robin across makes."""
+    """Keep <=2 model years per model, then round-robin across makes.
+
+    new: newest only. either: newest + middle. used: two years spread across the range, skipping the
+    newest (a used current-year car prices like a new one), so the LLM can match a year to the budget.
+    """
     by_model: dict[tuple[str, str, str], list[Candidate]] = {}
     for c in cands:
         by_model.setdefault((c.make, c.model, c.fuel), []).append(c)
@@ -170,9 +195,12 @@ def diversify(cands: list[Candidate], p: Preferences, limit: int = MAX_CANDIDATE
     kept: list[Candidate] = []
     for versions in by_model.values():
         versions.sort(key=lambda c: c.year, reverse=True)
-        kept.append(versions[0])
-        if p.condition != "new" and len(versions) > 2:
-            kept.append(versions[len(versions) // 2])
+        if p.condition == "used" and len(versions) >= 3:
+            kept += [versions[len(versions) // 3], versions[2 * len(versions) // 3]]
+        else:
+            kept.append(versions[0])
+            if p.condition == "either" and len(versions) > 2:
+                kept.append(versions[len(versions) // 2])
 
     by_make: dict[str, list[Candidate]] = {}
     for c in sorted(kept, key=lambda c: c.score, reverse=True):

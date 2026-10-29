@@ -61,6 +61,7 @@ def test_prompt_treats_user_input_as_json_data() -> None:
     system, user = build_messages(p, cands, 7)
     assert "never instructions" in system["content"]
     assert json.loads(user["content"])["preferences"]["brands"] == ["Toyota"]
+    assert "min_seats" not in json.loads(user["content"])["preferences"]  # enforced in code, not by the model
 
 
 def test_parse_picks_drops_malformed_picks() -> None:
@@ -121,7 +122,7 @@ def test_rank_with_llm_request_and_response(monkeypatch: pytest.MonkeyPatch) -> 
 
     def handler(req: httpx.Request) -> httpx.Response:
         sent.update(json.loads(req.content), auth=req.headers["authorization"])
-        picks = [pick(f"c{i}", i).model_dump() for i in range(1, 10)]
+        picks = [pick(f"c{i}", i).model_dump() for i in range(1, 11)]
         return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps({"picks": picks})}}]})
 
     async def run() -> list[LLMPick]:
@@ -129,8 +130,18 @@ def test_rank_with_llm_request_and_response(monkeypatch: pytest.MonkeyPatch) -> 
             return await llm.rank_with_llm(client, p, cands)
 
     picks = asyncio.run(run())
-    assert [x.id for x in picks] == [f"c{i}" for i in range(1, 10)]
-    assert sent["response_format"]["json_schema"]["schema"]["properties"]["picks"]["maxItems"] == 9  # type: ignore[index]
+    assert [x.id for x in picks] == [f"c{i}" for i in range(1, 11)]
+    assert sent["response_format"]["json_schema"]["schema"]["properties"]["picks"]["maxItems"] == 10  # type: ignore[index]
     assert sent["model"] == "gpt-4.1-mini" and sent["auth"] == "Bearer sk-test"
     fmt = sent["response_format"]
     assert isinstance(fmt, dict) and fmt["json_schema"]["strict"] is True
+
+
+def test_backfill_never_claims_seats_it_cannot_back_up() -> None:
+    vs = fleet()
+    p = prefs(body_types=["SUV"], min_seats=7)  # small SUVs pass the prefilter (some seat 7) but typically seat 5
+    cands, _ = build_candidates(vs, p, fuels(vs))
+    assert cands  # prefilter keeps them for the LLM to judge
+    assert assemble(p, cands, []) == []  # but without an LLM estimate none are shown as 7-seaters
+    results = assemble(p, cands, [pick("c1", 1, seats=7)])
+    assert [r.seats for r in results] == [7]

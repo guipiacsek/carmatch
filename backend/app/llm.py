@@ -12,12 +12,13 @@ from pydantic import ValidationError
 from .candidates import TARGET_RESULTS, Candidate
 from .config import settings
 from .models import CarResult, LLMPick, LLMResponse, Preferences
+from .vehicles import typical_seats_for
 
 log = logging.getLogger(__name__)
 
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 MAX_BULLET_WORDS = 12
-SPARE_PICKS = 2  # extra ranked picks so dropped ones (duplicate model, too few seats) still get priced backups
+SPARE_PICKS = 3  # extra ranked picks so dropped ones (duplicate model, too few seats) still get priced backups
 
 SYSTEM_PROMPT = """You are CarMatch, a US car-buying assistant (USD, US market). You rank cars for one shopper.
 
@@ -30,8 +31,12 @@ different years). rank 1 is the best fit. match_score (0-100) reflects fit.
 - estimated_price_min/max: realistic US price range in USD for that model year in the shopper's condition. \
 "new": MSRP range across common trims. "used": typical dealer retail today for that model year with average \
 mileage. "either": new pricing for current model years, used pricing otherwise.
-- budget is soft: prefer cars whose estimated price fits it; rank over-budget cars lower.
-- seats: typical maximum seating capacity. Never pick a car with fewer seats than preferences.min_seats.
+- For each pick, first write seats and the price range as a neutral appraiser would, before judging fit. \
+The app checks them against the shopper's needs itself, so an estimate bent toward the shopper's wishes is a \
+wrong answer. Never lower a price to fit the budget.
+- budget is soft: prefer cars whose honest estimate fits it, and rank over-budget cars lower. Several model years \
+of the same model may be offered; choose the year whose realistic price fits the budget.
+- seats: the car's actual typical maximum seating capacity.
 - bullets: exactly 3 short reasons (max 12 words each) why this car fits THIS shopper's priorities. Be factual, \
 use the candidate data and well-known facts only, no prices."""
 
@@ -53,7 +58,8 @@ def build_messages(p: Preferences, cands: list[Candidate], n: int) -> list[dict[
     data = {
         "today": date.today().isoformat(),
         "picks_requested": n,
-        "preferences": p.model_dump(),
+        # min_seats is enforced in code; showing it to the model made it inflate seat counts to comply.
+        "preferences": p.model_dump(exclude={"min_seats"}),
         "candidates": [
             {
                 "id": c.id,
@@ -136,7 +142,7 @@ def to_result(c: Candidate, p: Preferences, pick: LLMPick | None) -> CarResult:
         score, seats = pick.match_score, pick.seats
     else:  # no LLM data: grounded bullets only, no price
         bullets = fallback_bullets(c)
-        score, seats = max(30, 70 - int(c.id[1:])), max(p.min_seats, min(c.max_seats, 5))
+        score, seats = max(30, 70 - int(c.id[1:])), typical_seats_for(c.vclass, c.body_types)
     return CarResult(
         car_key=c.key,
         rank=0,
@@ -172,7 +178,8 @@ def assemble(p: Preferences, cands: list[Candidate], picks: list[LLMPick]) -> li
     for c in cands:  # already in heuristic order
         if len(results) >= TARGET_RESULTS:
             break
-        if (c.make, c.model) not in used:
+        # Backfill only cars that typically seat enough people; we have no estimate to say otherwise.
+        if (c.make, c.model) not in used and typical_seats_for(c.vclass, c.body_types) >= p.min_seats:
             used.add((c.make, c.model))
             results.append(to_result(c, p, None))
     results = results[:TARGET_RESULTS]

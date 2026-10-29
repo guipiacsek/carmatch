@@ -117,6 +117,18 @@ def classify_body(
     return frozenset(bodies)
 
 
+def typical_seats_for(vclass: str, bodies: frozenset[str]) -> int:
+    """Seats in the common configuration; shown for backfilled cars, which have no GPT estimate."""
+    vc = vclass.lower()
+    if vc == "two seaters":
+        return 2
+    if "minivan" in vc or "vans" in vc:
+        return 7  # large SUVs range from 5 (Cullinan) to 8 (Tahoe), so they only get 7 from the LLM
+    if "minicompact" in vc or "Convertible" in bodies or "Coupe" in bodies:
+        return 4
+    return 5
+
+
 def max_seats_for(vclass: str, bodies: frozenset[str]) -> int:
     vc = vclass.lower()
     if vc == "two seaters":

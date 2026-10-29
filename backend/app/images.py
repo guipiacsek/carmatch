@@ -4,6 +4,7 @@ import asyncio
 import html
 import logging
 import re
+from typing import Any
 
 import httpx
 
@@ -12,6 +13,8 @@ from .models import CarImage
 log = logging.getLogger(__name__)
 
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
+MAX_YEAR_GAP = 15  # rejects e.g. a 1958 Land Cruiser for a 2027, but allows a 2014 Durango (same generation)
+_limit = asyncio.Semaphore(3)  # Wikimedia asks API clients not to fire many requests in parallel
 _cache: dict[str, CarImage | None] = {}  # shortcut: unbounded per-process cache, fine for a few thousand models
 
 
@@ -45,12 +48,17 @@ async def _search(client: httpx.AsyncClient, query: str, model: str, year: int) 
     resp.raise_for_status()
     pages = sorted(resp.json().get("query", {}).get("pages", []), key=lambda pg: pg.get("index", 0))
     want = _norm(" ".join(w for w in model.split() if w.lower() not in _GENERIC_WORDS)) or _norm(model)
-    for page in pages:
+    best: tuple[int, dict[str, Any]] | None = None
+    for page in pages:  # search order; keep the photo whose title year is closest to the car's
         info = (page.get("imageinfo") or [{}])[0]
         if info.get("mime") not in ("image/jpeg", "image/png", "image/webp") or want not in _norm(page["title"]):
             continue
-        if year and any(abs(int(y) - year) > 6 for y in re.findall(r"(?<!\d)(?:19|20)\d{2}(?!\d)", page["title"])):
-            continue  # e.g. a 1958 Land Cruiser for a 2027 Land Cruiser
+        years = [int(y) for y in re.findall(r"(?<!\d)(?:19|20)\d{2}(?!\d)", page["title"])]
+        gap = min(abs(y - year) for y in years) if years else 5  # undated photos rank as "probably recent-ish"
+        if gap <= MAX_YEAR_GAP and (best is None or gap < best[0]):
+            best = (gap, info)
+    if best is not None:
+        info = best[1]
         meta = info.get("extmetadata", {})
         return CarImage(
             url=info.get("thumburl") or info["url"],
@@ -67,7 +75,8 @@ async def find_image(client: httpx.AsyncClient, year: int, make: str, model: str
         key = query.lower()
         if key not in _cache:
             try:
-                _cache[key] = await _search(client, query, model, year)
+                async with _limit:
+                    _cache[key] = await _search(client, query, model, year)
             except (httpx.HTTPError, KeyError, ValueError) as e:
                 log.warning("commons lookup failed for %r: %s", query, e)
                 return None  # transient: don't cache the miss
