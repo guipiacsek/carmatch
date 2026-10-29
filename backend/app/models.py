@@ -87,7 +87,7 @@ class RecommendResponse(BaseModel):
 
 class LLMPick(BaseModel):
     id: str
-    rank: int = Field(ge=1, le=7)
+    rank: int = Field(ge=1, le=9)
     match_score: int = Field(ge=0, le=100)
     estimated_price_min: int = Field(ge=0)
     estimated_price_max: int = Field(ge=0)
@@ -96,4 +96,4 @@ class LLMPick(BaseModel):
 
 
 class LLMResponse(BaseModel):
-    picks: list[LLMPick] = Field(min_length=1, max_length=7)
+    picks: list[LLMPick] = Field(min_length=1, max_length=9)

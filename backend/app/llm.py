@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 MAX_BULLET_WORDS = 12
+SPARE_PICKS = 2  # extra ranked picks so dropped ones (duplicate model, too few seats) still get priced backups
 
 SYSTEM_PROMPT = """You are CarMatch, a US car-buying assistant (USD, US market). You rank cars for one shopper.
 
@@ -75,7 +76,7 @@ def build_messages(p: Preferences, cands: list[Candidate], n: int) -> list[dict[
 
 
 async def rank_with_llm(client: httpx.AsyncClient, p: Preferences, cands: list[Candidate]) -> list[LLMPick]:
-    n = min(TARGET_RESULTS, len(cands))
+    n = min(TARGET_RESULTS + SPARE_PICKS, len(cands))
     body = {
         "model": settings.openai_model,
         "temperature": 0.2,
