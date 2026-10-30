@@ -16,7 +16,7 @@ class Settings:
     allowed_origins: list[str] = field(default_factory=lambda: _list("ALLOWED_ORIGINS", "http://localhost:5173"))
     # Optional regex, e.g. Vercel preview URLs: ^https://carmatch-.*\.vercel\.app$
     allowed_origin_regex: str | None = field(default_factory=lambda: os.getenv("ALLOWED_ORIGIN_REGEX") or None)
-    rate_limit_per_hour: int = field(default_factory=lambda: int(os.getenv("RATE_LIMIT_PER_HOUR", "8")))
+    rate_limit_per_hour: int = field(default_factory=lambda: int(os.getenv("RATE_LIMIT_PER_HOUR", "12")))
     # Opening a car's details is a smaller GPT call, so it gets its own, larger hourly budget.
     details_rate_limit_per_hour: int = field(
         default_factory=lambda: int(os.getenv("DETAILS_RATE_LIMIT_PER_HOUR", "40"))

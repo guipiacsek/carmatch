@@ -20,9 +20,9 @@ log = logging.getLogger(__name__)
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 OPENAI_MODELS_URL = "https://api.openai.com/v1/models"  # free; used to keep the connection warm
 MAX_BULLET_WORDS = 12
-BATCHES = 3  # parallel calls, each over its own slice of the candidates; results stream as each one lands
-BATCH_PICKS = 4  # asked of each call...
-BATCH_KEEP = 3  # ...of which the best valid 3 are kept (the 4th covers a pick dropped for seats)
+BATCHES = 2  # parallel calls, each over its own slice of the candidates; results stream as each one lands
+BATCH_PICKS = 5  # asked of each call...
+BATCH_KEEP = 4  # ...of which the best valid 4 are kept (the 5th covers a pick dropped for seats)
 
 SYSTEM_PROMPT = """You are CarMatch, a US car-buying assistant (USD, US market). You rank cars for one shopper.
 
@@ -79,23 +79,30 @@ def build_messages(p: Preferences, cands: list[Candidate], n: int, hide_budget: 
         "preferences": p.model_dump(exclude={"seats", "language", "budget"} if hide_budget else {"seats", "language"}),
         "candidates": [
             {
-                "id": c.id,
-                "year": c.year,
-                "make": c.make,
-                "model": c.model,
-                "body": sorted(c.body_types),
-                "epa_class": c.vclass,
-                "fuel": c.fuel,
-                "mpg_combined": c.mpg,
-                "mpge_combined": c.mpge,
-                "drivetrains": sorted(c.drive),
-                "transmissions": sorted(c.transmissions),
-            }
+                k: v
+                for k, v in {
+                    "id": c.id,
+                    "year": c.year,
+                    "make": c.make,
+                    "model": c.model,
+                    "body": sorted(c.body_types),
+                    "epa_class": c.vclass,
+                    "fuel": c.fuel,
+                    "mpg_combined": c.mpg,
+                    "mpge_combined": c.mpge,
+                    "drivetrains": sorted(c.drive),
+                    "transmissions": sorted(c.transmissions),
+                }.items()
+                if v is not None
+            }  # drop nulls (mpg for EVs, mpge for the rest): same facts, fewer tokens
             for c in cands
         ],
     }
     # json.dumps escapes everything; user fields are enums/ints/regex-validated brand names.
-    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": json.dumps(data)}]
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": json.dumps(data, separators=(",", ":"))},
+    ]
 
 
 def split_batches(cands: list[Candidate], k: int = BATCHES) -> list[list[Candidate]]:
@@ -266,7 +273,8 @@ async def car_details(client: httpx.AsyncClient, req: CarDetailsRequest, epa: di
             {
                 "role": "user",
                 "content": json.dumps(
-                    {"language": req.language, "car": req.model_dump(exclude={"language"}), "epa": epa}
+                    {"language": req.language, "car": req.model_dump(exclude={"language"}), "epa": epa},
+                    separators=(",", ":"),
                 ),
             },
         ],

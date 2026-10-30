@@ -133,19 +133,19 @@ def test_parallel_batches_stream_and_survive_one_failure(client: TestClient, mon
                 match_score=90 - i,
                 bullets=["a", "b", "c"],
             )
-            for i, c in enumerate(batch[:4])
+            for i, c in enumerate(batch[: llm.BATCH_PICKS])
         ]
 
     monkeypatch.setattr(main, "settings", replace(main.settings, openai_api_key="sk-test"))
     monkeypatch.setattr(llm, "rank_with_llm", fake_rank)
     events = stream(client.post("/api/recommend", json={**BODY, "budget": 33333}))
     car_events = [e for e in events if e["type"] == "cars"]
-    assert len(calls) == 3
-    # two successful batches of 3, then one data-only backfill event for the failed batch's slots
-    assert [len(e["cars"]) for e in car_events] == [3, 3, 3]  # type: ignore[arg-type]
+    assert len(calls) == llm.BATCHES
+    # the successful batches, then one data-only backfill event for the failed batch's slots
+    assert [len(e["cars"]) for e in car_events] == [llm.BATCH_KEEP] * llm.BATCHES  # type: ignore[arg-type]
     final = events[-1]["results"]
     assert isinstance(final, list) and len(final) == TARGET_RESULTS
-    assert sum(1 for c in final if c["price_min"] is None) == 3
+    assert sum(1 for c in final if c["price_min"] is None) == llm.BATCH_KEEP
     assert final[0]["price_min"] is not None  # priced, high-scoring picks rank above data-only backfill
 
 

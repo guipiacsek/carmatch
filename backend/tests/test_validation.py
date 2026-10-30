@@ -4,7 +4,17 @@ import pytest
 from pydantic import ValidationError
 
 from app.candidates import TARGET_RESULTS, build_candidates
-from app.llm import BATCH_KEEP, assemble, build_messages, parse_picks, split_batches, strict_schema, validate_batch
+from app.llm import (
+    BATCH_KEEP,
+    BATCH_PICKS,
+    BATCHES,
+    assemble,
+    build_messages,
+    parse_picks,
+    split_batches,
+    strict_schema,
+    validate_batch,
+)
 from app.models import LLMPick
 
 from .conftest import fleet, prefs
@@ -131,7 +141,7 @@ def test_rank_with_llm_request_and_response(monkeypatch: pytest.MonkeyPatch) -> 
 
     picks = asyncio.run(run())
     assert [x.id for x in picks] == [f"c{i}" for i in range(1, 10)]
-    assert sent["response_format"]["json_schema"]["schema"]["properties"]["picks"]["maxItems"] == 4  # type: ignore[index]
+    assert sent["response_format"]["json_schema"]["schema"]["properties"]["picks"]["maxItems"] == BATCH_PICKS  # type: ignore[index]
     assert sent["model"] == "gpt-4.1-mini" and sent["auth"] == "Bearer sk-test"
     fmt = sent["response_format"]
     assert isinstance(fmt, dict) and fmt["json_schema"]["strict"] is True
@@ -152,9 +162,9 @@ def test_batches_split_fairly_and_never_share_a_model() -> None:
     p = prefs(body_types=["SUV"])
     cands, _ = build_candidates(vs, p, fuels(vs))
     batches = split_batches(cands)
-    assert len(batches) == 3
+    assert len(batches) == BATCHES
     models = [{(c.make, c.model) for c in b} for b in batches]
-    assert not (models[0] & models[1]) and not (models[1] & models[2]) and not (models[0] & models[2])
+    assert all(not (a & b) for i, a in enumerate(models) for b in models[i + 1 :])
     assert sum(len(b) for b in batches) == len(cands)
     assert batches[0][0].id == "c1"  # the strongest candidate seeds the first batch
 
