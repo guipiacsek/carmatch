@@ -18,7 +18,7 @@ from .auth import optional_user_id
 from .candidates import TARGET_RESULTS, Candidate, build_candidates
 from .config import MAX_BODY_BYTES, USER_AGENT, settings
 from .i18n import tr, word
-from .images import find_image, prefetch
+from .images import find_image, is_cached, prefetch
 from .models import (
     MAX_YEAR,
     MIN_YEAR,
@@ -200,6 +200,12 @@ async def image(
     await ensure_catalog()
     if make not in catalog.all_makes:  # any EPA make: favorites saved before the brand cut still get photos
         raise HTTPException(404, "Unknown make")
+    if not is_cached(year, make, model):  # only new lookups reach Wikimedia, so only they count
+        allowed, retry_after = await rate_limit_hit(
+            request.app.state.http, f"image:{client_ip(request)}", settings.image_rate_limit_per_hour
+        )
+        if not allowed:
+            raise HTTPException(429, "Too many photo requests.", headers={"Retry-After": str(retry_after)})
     response.headers["Cache-Control"] = "public, max-age=604800"
     return await find_image(request.app.state.http, year, make, model)
 

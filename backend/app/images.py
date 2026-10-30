@@ -159,10 +159,18 @@ async def _lookup(client: httpx.AsyncClient, key: str, make: str, query: str, mo
     return found
 
 
-async def find_image(client: httpx.AsyncClient, year: int, make: str, model: str) -> CarImage | None:
+def _key(year: int, make: str, model: str) -> str:
     # "Hybrid", "Pickup" etc. narrow Commons search to almost nothing ("G-Class Hybrid"), so search without them.
+    return f"{year} {make} {_model_words(model)}".lower()
+
+
+def is_cached(year: int, make: str, model: str) -> bool:
+    return _key(year, make, model) in _cache
+
+
+async def find_image(client: httpx.AsyncClient, year: int, make: str, model: str) -> CarImage | None:
     query = f"{make} {_model_words(model)}"
-    key = f"{year} {query}".lower()
+    key = _key(year, make, model)
     if key in _cache:
         return _cache[key]
     task = _inflight.get(key)

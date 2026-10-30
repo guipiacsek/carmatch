@@ -6,7 +6,7 @@ import { t } from "@/i18n"
 
 import { deleteAccount } from "@/lib/api"
 import { KEYS, load, save } from "@/lib/storage"
-import { getSupabase, supabaseEnabled } from "@/lib/supabase"
+import { getSupabase, needsAuthNow, supabaseEnabled } from "@/lib/supabase"
 import type { CarResult } from "@/lib/types"
 
 export const MAX_FAVORITES = 10 // enforced by a DB trigger; mirrored here only for messaging
@@ -38,8 +38,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [favoritesLoading, setFavoritesLoading] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [recovering, setRecovering] = useState(false)
+  // supabase-js is ~210 KB: load it for saved logins and email links now, for everyone else when login opens
+  const [connected, setConnected] = useState(needsAuthNow)
+  const openAuth = useCallback(() => {
+    setConnected(true)
+    setAuthOpen(true)
+  }, [])
 
   useEffect(() => {
+    if (!connected) return
     let unsubscribe = () => {}
     let live = true
     getSupabase().then((supabase) => {
@@ -55,7 +62,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       live = false
       unsubscribe()
     }
-  }, [])
+  }, [connected])
 
   const refresh = useCallback(async () => {
     const supabase = await getSupabase()
@@ -124,7 +131,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       }
       if (!user) {
         save(KEYS.pendingFavorite, car, localStorage)
-        setAuthOpen(true)
+        openAuth()
         return
       }
       if (favorites.some((f) => f.car_key === car.car_key)) {
@@ -135,7 +142,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         await add(car, favorites)
       }
     },
-    [user, favorites, refresh, add],
+    [user, favorites, refresh, add, openAuth],
   )
 
   const value = useMemo<Account>(
@@ -146,7 +153,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       favoritesLoading,
       isFavorite: (key) => favorites.some((f) => f.car_key === key),
       toggleFavorite,
-      openAuth: () => setAuthOpen(true),
+      openAuth,
       signOut: async () => {
         await (await getSupabase())?.auth.signOut()
       },
@@ -161,7 +168,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         toast.success(t("acc.deleted"))
       },
     }),
-    [user, favorites, favoritesLoading, toggleFavorite],
+    [user, favorites, favoritesLoading, toggleFavorite, openAuth],
   )
 
   return (

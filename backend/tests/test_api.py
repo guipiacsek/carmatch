@@ -276,3 +276,15 @@ def test_delete_account_calls_supabase_admin(client: TestClient, monkeypatch: py
     finally:
         main.app.dependency_overrides.clear()
     assert calls == ["https://x.supabase.co/auth/v1/admin/users/user-1"]
+
+
+def test_new_photo_lookups_are_rate_limited_but_cached_ones_are_free(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dataclasses import replace
+
+    monkeypatch.setattr(main, "settings", replace(main.settings, image_rate_limit_per_hour=2))
+    ask = lambda model: client.get(f"/api/image?year=2020&make=Toyota&model={model}").status_code  # noqa: E731
+    assert [ask("RAV4"), ask("Camry"), ask("Corolla")] == [200, 200, 429]
+    monkeypatch.setattr(main, "is_cached", lambda *_: True)  # already looked up: no Wikimedia call, no count
+    assert ask("Corolla") == 200
