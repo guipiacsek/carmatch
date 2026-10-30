@@ -14,19 +14,19 @@ from dataclasses import dataclass, replace
 import httpx
 
 from .config import USER_AGENT, settings
-from .models import MIN_YEAR
+from .models import DISPLAY_NAMES, MIN_YEAR
 
 log = logging.getLogger(__name__)
 
 # The fueleconomy.gov web services' full dataset (same data as /ws/rest/vehicle/*), downloaded once instead of
 # thousands of per-vehicle calls per request.
 FE_DATASET_URL = "https://www.fueleconomy.gov/feg/epadata/vehicles.csv.zip"
-# The only brands CarMatch offers or recommends (EPA spellings); other makes are dropped from the catalog.
+# The only brands CarMatch offers or recommends (display names); other makes are dropped from the catalog.
 BRANDS = frozenset(
     {
         "Acura", "Alfa Romeo", "Aston Martin", "Audi", "BMW", "Buick", "Cadillac", "Chevrolet", "Chrysler", "Dodge",
         "Ferrari", "Fiat", "Ford", "Genesis", "GMC", "Honda", "Hyundai", "Infiniti", "Jaguar", "Jeep", "Kia",
-        "Lamborghini", "Land Rover", "Lexus", "Lincoln", "Mazda", "McLaren Automotive", "Mercedes-Benz", "MINI",
+        "Lamborghini", "Land Rover", "Lexus", "Lincoln", "Mazda", "McLaren", "Mercedes", "MINI",
         "Mitsubishi", "Nissan", "Porsche", "Ram", "Subaru", "Tesla", "Toyota", "Volkswagen", "Volvo",
     }
 )  # fmt: skip
@@ -190,7 +190,7 @@ def parse_rows(rows: "csv.DictReader[str]") -> list[Vehicle]:
             Vehicle(
                 id=int(r["id"]),
                 year=year,
-                make=r["make"].strip(),
+                make=DISPLAY_NAMES.get(r["make"].strip(), r["make"].strip()),
                 model=r["model"].strip(),
                 base_model=base_model(r["model"], r["baseModel"]),
                 vclass=r["VClass"],
@@ -222,7 +222,8 @@ class Catalog:
         vehicles = [
             v if canonical[v.make.lower()] == v.make else replace(v, make=canonical[v.make.lower()]) for v in vehicles
         ]
-        self.all_makes = {v.make for v in vehicles}  # saved favorites may predate the brand cut
+        # saved favorites may predate the brand cut or the renames
+        self.all_makes = {v.make for v in vehicles} | set(DISPLAY_NAMES)
         offered = {b.lower() for b in BRANDS}  # case-insensitive: the canonical spelling depends on the data
         self.vehicles = [v for v in vehicles if v.make.lower() in offered]
         self.makes = sorted({v.make for v in self.vehicles}, key=str.lower)

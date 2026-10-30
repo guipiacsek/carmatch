@@ -16,6 +16,8 @@ Transmission = Literal["auto", "manual", "any"]
 Drivetrain = Literal["AWD", "FWD", "RWD", "4WD"]
 Language = Literal["en", "pt-BR", "es", "ja"]  # the AI writes its text in this language
 Seats = Annotated[int, Field(ge=2, le=9)]
+# Shorter names shown everywhere instead of EPA's spelling; old names still arrive from cached lists and old links.
+DISPLAY_NAMES = {"McLaren Automotive": "McLaren", "Mercedes-Benz": "Mercedes"}
 Brand = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40, pattern=r"^[A-Za-z0-9 .&'\-]+$")
 ]
@@ -41,6 +43,11 @@ class Preferences(BaseModel):
     @classmethod
     def _dedupe_sort(cls, v: list[str]) -> list[str]:
         return sorted(set(v))
+
+    @field_validator("brands")
+    @classmethod
+    def _rename(cls, v: list[str]) -> list[str]:
+        return sorted({DISPLAY_NAMES.get(b, b) for b in v})
 
     def seats_ok(self, n: int) -> bool:
         return n in self.seats if self.seats else n >= 2

@@ -202,3 +202,8 @@ def test_every_offered_brand_can_be_picked() -> None:
     from app.vehicles import BRANDS
 
     assert len(prefs(brands=sorted(BRANDS)).brands) == len(BRANDS)
+
+
+def test_old_brand_names_still_match() -> None:
+    # cached brand lists and old shared links still send EPA's spelling
+    assert prefs(brands=["Mercedes-Benz", "Mercedes", "McLaren Automotive"]).brands == ["McLaren", "Mercedes"]

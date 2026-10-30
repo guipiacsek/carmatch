@@ -80,7 +80,7 @@ function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) 
         {shown.map((m, i) => (
           <Fragment key={m}>
             {m[0].toUpperCase() !== shown[i - 1]?.[0].toUpperCase() && (
-              <p aria-hidden className="col-span-full px-1 pt-2 text-lg font-extrabold text-primary first:pt-0">
+              <p aria-hidden className="col-span-full px-1 pt-1 text-xs font-extrabold text-primary first:pt-0">
                 {m[0].toUpperCase()}
               </p>
             )}
