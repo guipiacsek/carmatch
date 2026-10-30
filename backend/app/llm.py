@@ -3,6 +3,7 @@
 import copy
 import json
 import logging
+import re
 from datetime import date
 from typing import Any
 
@@ -13,7 +14,7 @@ from .candidates import TARGET_RESULTS, Candidate
 from .config import settings
 from .i18n import tr, word
 from .models import CarDetails, CarDetailsRequest, CarResult, Language, LLMPick, LLMResponse, Preferences
-from .vehicles import typical_seats_for
+from .vehicles import BRANDS, typical_seats_for
 
 log = logging.getLogger(__name__)
 
@@ -170,6 +171,12 @@ def fallback_bullets(c: Candidate, lang: Language = "en") -> list[str]:
     ]
 
 
+def other_brand(text: str, make: str) -> bool:
+    """The model sometimes writes a reason meant for another pick ("MINI brand..." on a Fiat). Case-sensitive, so
+    the word "mini" or "ram" in a sentence doesn't count."""
+    return any(b != make and re.search(rf"\b{re.escape(b)}\b", text) for b in BRANDS)
+
+
 def to_result(c: Candidate, p: Preferences, pick: LLMPick | None) -> CarResult:
     drive = p.drivetrain if p.drivetrain in c.drive else " / ".join(sorted(c.drive))
     trans = {"auto": "Automatic", "manual": "Manual"}
@@ -177,8 +184,9 @@ def to_result(c: Candidate, p: Preferences, pick: LLMPick | None) -> CarResult:
     if pick:
         lo, hi = sorted((pick.estimated_price_min, pick.estimated_price_max))
         price = (lo, hi)
-        bullets = [short(b) for b in pick.bullets][:3]
-        bullets += fallback_bullets(c, p.language)[len(bullets) :]
+        fallback = fallback_bullets(c, p.language)
+        bullets = [fallback[i] if other_brand(b, c.make) else short(b) for i, b in enumerate(pick.bullets[:3])]
+        bullets += fallback[len(bullets) :]
         score, seats = pick.match_score, pick.seats
     else:  # no LLM data: grounded bullets only, no price
         bullets = fallback_bullets(c, p.language)

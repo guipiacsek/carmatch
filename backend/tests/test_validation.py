@@ -207,3 +207,13 @@ def test_every_offered_brand_can_be_picked() -> None:
 def test_old_brand_names_still_match() -> None:
     # cached brand lists and old shared links still send EPA's spelling
     assert prefs(brands=["Mercedes-Benz", "Mercedes", "McLaren Automotive"]).brands == ["McLaren", "Mercedes"]
+
+
+def test_reason_naming_another_brand_is_replaced() -> None:
+    vs = fleet()
+    p = prefs(body_types=["SUV"])
+    cands, _ = build_candidates(vs, p, fuels(vs))
+    c = cands[0]
+    bullets = ["MINI brand aligns with brand preference", "Roomy mini crossover", f"{c.make} is reliable"]
+    r = next(x for x in assemble(p, cands, [pick(c.id, 1, bullets=bullets)]) if x.car_key == c.key)
+    assert "MINI" not in r.bullets[0] and r.bullets[1:] == bullets[1:]
