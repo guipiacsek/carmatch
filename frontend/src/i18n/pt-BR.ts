@@ -216,7 +216,7 @@ export const ptBR: Dict = {
   "share.btn": "Compartilhar",
   "share.title": "Meus resultados no CarMatch",
   "share.text": "Carros que combinam com o que eu procuro:",
-  "share.copied": "Link copiado. Ele funciona por 7 dias.",
+  "share.copied": "Link copiado. Ele funciona por 4 dias.",
   "share.failed": "Não deu para compartilhar automaticamente. Aqui está o link: {url}",
 
   "rank.title": "Rankings",
@@ -245,7 +245,7 @@ export const ptBR: Dict = {
   "sh.find": "Encontre carros para você",
   "sh.loading": "Carregando resultados compartilhados…",
   "sh.error": "Não foi possível carregar estes resultados. Tente novamente.",
-  "sh.expired": "Esta busca compartilhada expirou. Os links valem por 7 dias.",
+  "sh.expired": "Esta busca compartilhada expirou. Os links valem por 4 dias.",
 
   "auth.checkInbox": "Confira seu e-mail",
   "auth.title": "Salve os carros que você curtir",

@@ -216,7 +216,7 @@ export const es: Dict = {
   "share.btn": "Compartir",
   "share.title": "Mis resultados de CarMatch",
   "share.text": "Autos que encajan con lo que busco:",
-  "share.copied": "Enlace copiado. Funciona durante 7 días.",
+  "share.copied": "Enlace copiado. Funciona durante 4 días.",
   "share.failed": "No se pudo compartir automáticamente. Aquí está el enlace: {url}",
 
   "rank.title": "Rankings",
@@ -245,7 +245,7 @@ export const es: Dict = {
   "sh.find": "Encuentra autos para ti",
   "sh.loading": "Cargando resultados compartidos…",
   "sh.error": "No se pudieron cargar estos resultados. Inténtalo de nuevo.",
-  "sh.expired": "Esta búsqueda compartida expiró. Los enlaces duran 7 días.",
+  "sh.expired": "Esta búsqueda compartida expiró. Los enlaces duran 4 días.",
 
   "auth.checkInbox": "Revisa tu correo",
   "auth.title": "Guarda los autos que te gusten",

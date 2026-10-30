@@ -63,7 +63,7 @@ These are choices the brief didn't settle, made while building the app autonomou
 39. **3 parallel GPT calls instead of one.** Candidates are dealt round-robin by model into 3 groups (all years of a model stay in one group, so batches never return the same model). Each call picks 4, and the best 3 valid ones are kept, for 9 results total. `/api/recommend` streams NDJSON (`meta`, one `cars` line per finished batch, `done` with the final ordered list) so cards appear as batches land. A failed batch's slots get data-only backfill, and that response isn't cached. Final order: within budget first, then match score. GPT is told scores are absolute, since each call only sees a third of the pool. Measured: all 9 cars in about 3.5 to 4.5 s, versus 6 to 8 s for 7 cars in one call.
 40. **Client IP behind Render:** the live database showed Render's load balancers appending private `10.x` addresses, a different one per request, so every search counted as a new client. Private and loopback hops are now dropped from the right of `X-Forwarded-For` before counting `TRUSTED_PROXY_HOPS`. `GET /api/client-ip` shows callers the address they're counted under.
 
-41. **Shareable links reuse the recommendation cache.** The share id *is* the SHA-256 cache key (64 hex characters, so it can't be guessed), served by `GET /api/results/{id}` at `/r/<id>`, and it lives as long as the cache entry (7 days). Degraded responses (a failed GPT batch) aren't cached, so they get no share button.
+41. **Shareable links reuse the recommendation cache.** The share id *is* the SHA-256 cache key (64 hex characters, so it can't be guessed), served by `GET /api/results/{id}` at `/r/<id>`, and it lives as long as the cache entry (4 days). Degraded responses (a failed GPT batch) aren't cached, so they get no share button.
 42. **Compare view:** tick up to 3 cards (results, shared results or favorites), then open a side-by-side table. It highlights the lowest price, best match and most seats, but not when every car ties.
 43. **"See on Cars.com":** make and year are hard filters, the model goes in as a keyword (EPA names like "F150 Pickup" don't always match Cars.com model slugs), and the condition is "all" for current model years, otherwise "used". Cars.com is behind a bot check, so this couldn't be click-tested automatically. `listingsUrl()` in `src/lib/listings.ts` is where an affiliate ID goes.
 44. **First load:** supabase-js, the sign-in dialog, and the results, favorites and shared pages are lazy-loaded. The main bundle went from 434 KB to 331 KB (138 to 104 KB gzipped).
@@ -71,7 +71,7 @@ These are choices the brief didn't settle, made while building the app autonomou
 45. **Car details on click.** Clicking a card (or its title, for keyboard users) opens a details panel and makes a second, smaller GPT call (`POST /api/car-details`).
     - Only cars that exist in the EPA catalog are accepted, so arbitrary text can't be sent to GPT.
     - The EPA facts (class, MPG range, drivetrains, transmissions, model variants) go in the prompt and are shown as-is.
-    - The answer is cached per car for 7 days in the same cache table, so later opens are instant and free.
+    - The answer is cached per car for 4 days in the same cache table, so later opens are instant and free.
     - It has its own rate limit (`DETAILS_RATE_LIMIT_PER_HOUR`, default 40). Opening details is cheaper and more frequent than a search, and it shouldn't use up search quota.
     - The panel says the AI text can be wrong.
 

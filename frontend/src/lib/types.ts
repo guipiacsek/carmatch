@@ -77,7 +77,7 @@ export interface RecommendResponse {
   relaxed: string[]
   notice: string | null
   cached: boolean
-  share_id: string | null // opens these results at /r/<share_id> for 7 days
+  share_id: string | null // opens these results at /r/<share_id> for 4 days
 }
 
 /** public/rankings.{lang}.json, written by backend/app/seo.py */

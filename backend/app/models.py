@@ -98,7 +98,7 @@ class RecommendResponse(BaseModel):
     relaxed: list[str]  # soft constraints that were relaxed, in order
     notice: str | None = None
     cached: bool = False
-    share_id: str | None = None  # opens these results at /r/<share_id> while they're cached (7 days)
+    share_id: str | None = None  # opens these results at /r/<share_id> while they're cached (4 days)
 
 
 # --- LLM structured output (schema sent to OpenAI) ---

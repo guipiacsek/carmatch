@@ -216,7 +216,7 @@ export const ja: Dict = {
   "share.btn": "共有",
   "share.title": "CarMatchの検索結果",
   "share.text": "探している条件に合う車：",
-  "share.copied": "リンクをコピーしました。7日間有効です。",
+  "share.copied": "リンクをコピーしました。4日間有効です。",
   "share.failed": "自動で共有できませんでした。リンクはこちら：{url}",
 
   "rank.title": "ランキング",
@@ -245,7 +245,7 @@ export const ja: Dict = {
   "sh.find": "自分に合う車を探す",
   "sh.loading": "共有された結果を読み込み中…",
   "sh.error": "結果を読み込めませんでした。もう一度お試しください。",
-  "sh.expired": "この共有リンクは期限切れです。共有リンクの有効期間は7日間です。",
+  "sh.expired": "この共有リンクは期限切れです。共有リンクの有効期間は4日間です。",
 
   "auth.checkInbox": "メールをご確認ください",
   "auth.title": "気になる車を保存しよう",

@@ -226,7 +226,7 @@ export const en = {
   "share.btn": "Share",
   "share.title": "My CarMatch results",
   "share.text": "Cars that fit what I'm looking for:",
-  "share.copied": "Link copied. It works for 7 days.",
+  "share.copied": "Link copied. It works for 4 days.",
   "share.failed": "Couldn't share automatically. Here's the link: {url}",
 
   // Rankings
@@ -258,7 +258,7 @@ export const en = {
   "sh.find": "Find cars for you",
   "sh.loading": "Loading shared results…",
   "sh.error": "Couldn't load these results. Please try again.",
-  "sh.expired": "This shared search has expired. Shared links last 7 days.",
+  "sh.expired": "This shared search has expired. Shared links last 4 days.",
 
   // Sign in
   "auth.checkInbox": "Check your inbox",

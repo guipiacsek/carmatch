@@ -238,7 +238,7 @@ def epa_facts(req: CarDetailsRequest) -> dict[str, Any] | None:
 
 @app.post("/api/car-details", response_model=CarDetails)
 async def car_details(req: CarDetailsRequest, request: Request) -> CarDetails:
-    """Second GPT call when someone opens a car card. Grounded in EPA facts, cached 7 days, rate-limited."""
+    """Second GPT call when someone opens a car card. Grounded in EPA facts, cached 4 days, rate-limited."""
     http: httpx.AsyncClient = request.app.state.http
     await ensure_catalog()
     epa = epa_facts(req)
@@ -317,7 +317,7 @@ async def shared_results(request: Request, share_id: str = Path(pattern=r"^[0-9a
     """A shared results link. The id is the SHA-256 cache key, so it can't be guessed or enumerated."""
     cached = await cache_get(request.app.state.http, share_id)
     if not cached:
-        raise HTTPException(404, "This shared search has expired. Shared links last 7 days.")
+        raise HTTPException(404, "This shared search has expired. Shared links last 4 days.")
     return RecommendResponse.model_validate({**cached, "cached": True, "share_id": share_id})
 
 
@@ -409,7 +409,7 @@ async def recommend(
         if cands and not picked:
             notices.append(tr(lang, "no_ai"))
         out = RecommendResponse(results=final, relaxed=relaxed, notice=" ".join(notices) or None)
-        if failed:  # don't pin a degraded answer in the cache for 7 days, so there's nothing to share either
+        if failed:  # don't pin a degraded answer in the cache for days, so there's nothing to share either
             yield done_event(out)
         else:
             # Started before the done event so the client doesn't wait on it, and as its own task so a client that
