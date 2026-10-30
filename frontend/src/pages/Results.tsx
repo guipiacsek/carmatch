@@ -56,6 +56,7 @@ export default function Results() {
     recommend(prefs, onCars, signal).then(
       (data) => {
         save(KEYS.results, { prefs: key, data } satisfies Stored)
+        if (data.share_id) save(KEYS.lastSearch, { id: data.share_id, at: Date.now() }, localStorage)
         setState({ kind: "done", data })
       },
       (e: unknown) => {

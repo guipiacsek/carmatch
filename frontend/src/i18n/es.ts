@@ -6,6 +6,7 @@ export const es: Dict = {
   "nav.newSearch": "Nueva búsqueda",
   "nav.rankings": "Rankings",
   "nav.favorites": "Mis favoritos",
+  "nav.lastSearch": "Última búsqueda",
   "nav.signIn": "Ingresar",
   "nav.signOut": "Cerrar sesión",
   "nav.account": "Cuenta ({email})",
@@ -242,6 +243,8 @@ export const es: Dict = {
 
   "sh.title": "Resultados compartidos",
   "sh.sub": "Alguien compartió contigo estos resultados de CarMatch.",
+  "sh.mineTitle": "Tu última búsqueda",
+  "sh.mineSub": "Guardada en este navegador durante 4 días.",
   "sh.find": "Encuentra autos para ti",
   "sh.loading": "Cargando resultados compartidos…",
   "sh.error": "No se pudieron cargar estos resultados. Inténtalo de nuevo.",

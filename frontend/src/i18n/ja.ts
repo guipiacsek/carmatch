@@ -6,6 +6,7 @@ export const ja: Dict = {
   "nav.newSearch": "新しい検索",
   "nav.rankings": "ランキング",
   "nav.favorites": "お気に入り",
+  "nav.lastSearch": "前回の検索",
   "nav.signIn": "ログイン",
   "nav.signOut": "ログアウト",
   "nav.account": "アカウント（{email}）",
@@ -242,6 +243,8 @@ export const ja: Dict = {
 
   "sh.title": "共有された検索結果",
   "sh.sub": "CarMatchの検索結果が共有されました。",
+  "sh.mineTitle": "前回の検索",
+  "sh.mineSub": "このブラウザに4日間保存されます。",
   "sh.find": "自分に合う車を探す",
   "sh.loading": "共有された結果を読み込み中…",
   "sh.error": "結果を読み込めませんでした。もう一度お試しください。",

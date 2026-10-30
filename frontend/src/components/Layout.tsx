@@ -1,14 +1,14 @@
 import type { User as AuthUser } from "@supabase/supabase-js"
-import { Heart, LogOut, Moon, Search, Sun, Trash2, Trophy } from "lucide-react"
+import { Heart, History, LogOut, Moon, Search, Sun, Trash2, Trophy } from "lucide-react"
 import { useEffect, useState, type ReactNode } from "react"
-import { Link, NavLink, Outlet } from "react-router-dom"
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom"
 
 import { LanguageMenu, menuItem, Popover } from "@/components/LanguageMenu"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAccount } from "@/hooks/account"
 import { conversionNote, useI18n } from "@/i18n"
-import { KEYS, save } from "@/lib/storage"
+import { KEYS, load, save } from "@/lib/storage"
 import { isDark, onSystemChange, setDark } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
@@ -18,9 +18,17 @@ const initial = (u: AuthUser) => ((u.user_metadata?.full_name as string | undefi
 const iconBtn = "grid size-10 place-items-center rounded-full text-muted-foreground transition hover:text-foreground"
 const roundBtn = "grid size-10 place-items-center rounded-full bg-card text-foreground shadow-[0_2px_8px_#00000014] transition hover:shadow-[0_4px_14px_#0000001f]"
 
+const SAVED_FOR = 4 * 24 * 3600 * 1000 // the server keeps a search 4 days (store.CACHE_TTL)
+function lastSearchId(): string | null {
+  const last = load<{ id: string; at: number } | null>(KEYS.lastSearch, null, localStorage)
+  return last && Date.now() - last.at < SAVED_FOR ? last.id : null
+}
+
 function Links() {
   const { enabled } = useAccount()
   const { t } = useI18n()
+  useLocation() // re-read the last search on every navigation
+  const lastId = lastSearchId()
   const link = (to: string, label: string, icon: ReactNode, onClick?: () => void, end = true) => (
     <NavLink
       to={to}
@@ -36,6 +44,7 @@ function Links() {
   return (
     <nav aria-label="Main" className="flex gap-1">
       {link("/", t("nav.newSearch"), <Search className="size-5" aria-hidden />, restart)}
+      {lastId && link(`/r/${lastId}`, t("nav.lastSearch"), <History className="size-5" aria-hidden />)}
       {link("/rankings", t("nav.rankings"), <Trophy className="size-5" aria-hidden />, undefined, false)}
       {enabled && link("/favorites", t("nav.favorites"), <Heart className="size-5" aria-hidden />)}
     </nav>

@@ -22,4 +22,5 @@ export const KEYS = {
   step: "carmatch.step",
   results: "carmatch.results",
   pendingFavorite: "carmatch.pendingFavorite", // localStorage: survives the email-confirmation tab
+  lastSearch: "carmatch.lastSearch", // localStorage: { id, at } of the last saved search, for the top-bar button
 }

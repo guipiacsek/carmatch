@@ -6,6 +6,7 @@ export const en = {
   "nav.newSearch": "New search",
   "nav.rankings": "Rankings",
   "nav.favorites": "My favorites",
+  "nav.lastSearch": "Last search",
   "nav.signIn": "Log in",
   "nav.signOut": "Sign out",
   "nav.account": "Account ({email})",
@@ -255,6 +256,8 @@ export const en = {
   // Shared results
   "sh.title": "Shared car matches",
   "sh.sub": "Someone shared these CarMatch results with you.",
+  "sh.mineTitle": "Your last search",
+  "sh.mineSub": "Saved in this browser for 4 days.",
   "sh.find": "Find cars for you",
   "sh.loading": "Loading shared results…",
   "sh.error": "Couldn't load these results. Please try again.",

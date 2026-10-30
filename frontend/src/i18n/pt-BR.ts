@@ -6,6 +6,7 @@ export const ptBR: Dict = {
   "nav.newSearch": "Nova busca",
   "nav.rankings": "Rankings",
   "nav.favorites": "Meus favoritos",
+  "nav.lastSearch": "Última busca",
   "nav.signIn": "Entrar",
   "nav.signOut": "Sair",
   "nav.account": "Conta ({email})",
@@ -242,6 +243,8 @@ export const ptBR: Dict = {
 
   "sh.title": "Resultados compartilhados",
   "sh.sub": "Alguém compartilhou estes resultados do CarMatch com você.",
+  "sh.mineTitle": "Sua última busca",
+  "sh.mineSub": "Salva neste navegador por 4 dias.",
   "sh.find": "Encontre carros para você",
   "sh.loading": "Carregando resultados compartilhados…",
   "sh.error": "Não foi possível carregar estes resultados. Tente novamente.",

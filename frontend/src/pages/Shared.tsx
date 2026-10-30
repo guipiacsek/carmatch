@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useI18n, type Key } from "@/i18n"
 import { ApiError, getSharedResults } from "@/lib/api"
+import { KEYS, load } from "@/lib/storage"
 import type { RecommendResponse } from "@/lib/types"
 
 export default function Shared() {
@@ -14,6 +15,7 @@ export default function Shared() {
   const [data, setData] = useState<RecommendResponse | null>(null)
   const { t } = useI18n()
   const [error, setError] = useState<Key | null>(null)
+  const mine = load<{ id: string } | null>(KEYS.lastSearch, null, localStorage)?.id === shareId // opened from "Last search"
 
   useEffect(() => {
     getSharedResults(shareId).then(setData, (e: unknown) =>
@@ -33,8 +35,8 @@ export default function Shared() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">{t("sh.title")}</h1>
-          <p className="text-sm font-light text-muted-foreground">{t("sh.sub")}</p>
+          <h1 className="text-[clamp(28px,4vw,44px)] leading-tight font-bold">{t(mine ? "sh.mineTitle" : "sh.title")}</h1>
+          <p className="text-sm font-light text-muted-foreground">{t(mine ? "sh.mineSub" : "sh.sub")}</p>
         </div>
         {startLink}
       </div>
