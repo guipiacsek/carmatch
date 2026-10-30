@@ -1,5 +1,7 @@
+import dataclasses
 from collections.abc import Iterator
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -252,3 +254,25 @@ def test_rates_are_cached_for_a_day_and_survive_an_outage(monkeypatch: pytest.Mo
     up = False
     monkeypatch.setattr(main, "_rates_at", main.time.monotonic() - main.RATES_TTL - 1)  # a day later, source down
     assert asyncio.run(get()) == first  # last good rates still served
+
+
+def test_delete_account_requires_sign_in(client: TestClient) -> None:
+    assert client.post("/api/account/delete").status_code == 401
+
+
+def test_delete_account_calls_supabase_admin(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    async def fake_delete(url: str, **_: object) -> httpx.Response:
+        calls.append(url)
+        return httpx.Response(200, request=httpx.Request("DELETE", url))
+
+    main.app.dependency_overrides[main.optional_user_id] = lambda: "user-1"
+    fake = dataclasses.replace(main.settings, supabase_url="https://x.supabase.co", supabase_service_role_key="k")
+    monkeypatch.setattr(main, "settings", fake)
+    monkeypatch.setattr(main.app.state.http, "delete", fake_delete)
+    try:
+        assert client.post("/api/account/delete").status_code == 204
+    finally:
+        main.app.dependency_overrides.clear()
+    assert calls == ["https://x.supabase.co/auth/v1/admin/users/user-1"]

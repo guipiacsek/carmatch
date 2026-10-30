@@ -293,6 +293,25 @@ async def rates(request: Request, response: Response) -> dict[str, Any]:
     return _rates or {"date": None, "rates": {}}
 
 
+@app.post("/api/account/delete", status_code=204)
+async def delete_account(request: Request, user_id: str | None = Depends(optional_user_id)) -> Response:
+    """Deletes the signed-in user. Needs the service-role key; favorites go with it (on delete cascade)."""
+    if not user_id:
+        raise HTTPException(401, "Sign in to delete your account.")
+    if not settings.supabase_enabled:
+        raise HTTPException(503, "Accounts are not available right now.")
+    try:
+        r = await request.app.state.http.delete(
+            f"{settings.supabase_url}/auth/v1/admin/users/{user_id}", headers=settings.supabase_headers(), timeout=10
+        )
+        r.raise_for_status()
+    except httpx.HTTPError as e:
+        log.error("account delete failed for %s: %r", user_id, e)
+        raise HTTPException(502, "Couldn't delete your account. Please try again.") from e
+    log.info("account deleted user=%s", user_id)
+    return Response(status_code=204)
+
+
 @app.get("/api/results/{share_id}", response_model=RecommendResponse)
 async def shared_results(request: Request, share_id: str = Path(pattern=r"^[0-9a-f]{64}$")) -> RecommendResponse:
     """A shared results link. The id is the SHA-256 cache key, so it can't be guessed or enumerated."""

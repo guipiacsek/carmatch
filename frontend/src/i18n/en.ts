@@ -9,6 +9,8 @@ export const en = {
   "nav.signIn": "Log in",
   "nav.signOut": "Sign out",
   "nav.account": "Account ({email})",
+  "nav.delete": "Delete account",
+  "nav.deleteConfirm": "Delete your CarMatch account and all your favorites? This cannot be undone.",
   "nav.toLight": "Switch to light mode",
   "nav.toDark": "Switch to dark mode",
   "nav.language": "Language",
@@ -266,6 +268,19 @@ export const en = {
   "auth.password": "Password",
   "auth.min8": "At least 8 characters.",
   "auth.wait": "Please wait…",
+  "acc.deleted": "Your account was deleted.",
+  "acc.deleteFail": "Couldn't delete your account. Please try again.",
+  "auth.forgot": "Forgot password?",
+  "auth.forgotTitle": "Reset your password",
+  "auth.forgotDesc": "Enter your email and we'll send you a link to choose a new password.",
+  "auth.sendLink": "Send reset link",
+  "auth.resetSent": "If {email} has an account, a reset link is on its way.",
+  "auth.back": "Back to sign in",
+  "auth.newTitle": "Choose a new password",
+  "auth.newDesc": "You're almost done. Pick a new password for your account.",
+  "auth.newPassword": "New password",
+  "auth.savePassword": "Save password",
+  "auth.updated": "Password updated.",
 }
 
 export type Key = keyof typeof en
