@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Search, Trophy } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { BodyIcon } from "@/components/BodyIcon"
@@ -77,16 +77,22 @@ function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) 
         className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto p-0.5 sm:grid-cols-3"
       >
         {!makes && !error && Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}
-        {shown.map((m) => (
-          <Toggle
-            key={m}
-            variant="outline"
-            pressed={value.includes(m)}
-            onPressedChange={() => toggle(m)}
-            className="h-10 justify-start rounded-xl px-3 data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-          >
-            {m}
-          </Toggle>
+        {shown.map((m, i) => (
+          <Fragment key={m}>
+            {m[0].toUpperCase() !== shown[i - 1]?.[0].toUpperCase() && (
+              <p aria-hidden className="col-span-full px-1 pt-2 text-lg font-extrabold text-primary first:pt-0">
+                {m[0].toUpperCase()}
+              </p>
+            )}
+            <Toggle
+              variant="outline"
+              pressed={value.includes(m)}
+              onPressedChange={() => toggle(m)}
+              className="h-10 justify-start rounded-xl px-3 data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              {m}
+            </Toggle>
+          </Fragment>
         ))}
         {makes && shown.length === 0 && <p className="col-span-full text-sm text-muted-foreground">{t("brands.none")}</p>}
       </div>
