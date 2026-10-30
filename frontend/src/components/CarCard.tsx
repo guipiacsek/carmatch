@@ -72,7 +72,7 @@ const fuelShort = (f: CarResult["fuel_type"]) =>
 
 function ArcPhoto({ car, image }: { car: CarResult; image: CarImage | null | undefined }) {
   const [failed, setFailed] = useState(false)
-  const box = "absolute top-12 right-0 left-12 h-[140px] rounded-[18px] shadow-[0_18px_30px_#0003]"
+  const box = "absolute top-12 right-0 h-[140px] w-[calc(100%-3rem)] rounded-[18px] shadow-[0_18px_30px_#0003]"
   if (image === undefined) return <Skeleton className={cn(box, "bg-white/40")} />
   if (!image || failed) {
     return (
