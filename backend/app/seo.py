@@ -4,6 +4,7 @@ Run from backend/ with OPENAI_API_KEY set:  python -m app.seo [en pt-BR es ja]  
 Writes frontend/public/rankings.{lang}.json (the app's Rankings page, one file per language). The English pass also
 writes the static SEO pages (frontend/public/best/*.html, sitemap.xml). The output is static: nothing regenerates it
 on its own, so pass only the languages you want rebuilt.
+Add --photos to keep the saved lists (no OpenAI calls) and only refresh their photos.
 """
 
 import asyncio
@@ -328,8 +329,18 @@ def sitemap() -> str:
     return f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{rows}</urlset>\n'
 
 
-async def main(langs: list[str]) -> None:
-    await load_catalog()
+async def main(langs: list[str], photos_only: bool = False) -> None:
+    """photos_only: keep each saved list's cars (no OpenAI) and only look their photos up again."""
+    saved: dict[str, dict[str, list[CarResult]]] = {}
+    updated = {lang: date.today().isoformat() for lang in langs}
+    if photos_only:
+        for lang in langs:
+            with open(os.path.join(OUT, f"rankings.{lang}.json")) as f:
+                data = json.load(f)
+            updated[lang] = data["updated"]  # the rankings themselves didn't change
+            saved[lang] = {lst["slug"]: [CarResult.model_validate(c) for c in lst["cars"]] for lst in data["lists"]}
+    else:
+        await load_catalog()
     # Everything is built in memory and written only once every list succeeded, so a failed OpenAI call
     # can't leave frontend/public half old, half new.
     pages: dict[str, str] = {}
@@ -340,13 +351,15 @@ async def main(langs: list[str]) -> None:
             for slug, raw in GUIDES:
                 title, short, intro = TEXT[lang][slug]
                 p = Preferences.model_validate({**raw, "language": lang})
-                cars = await search(client, p)
+                cars = saved[lang][slug] if photos_only else await search(client, p)
                 imgs = await asyncio.gather(*(find_image(client, c.year, c.make, c.model) for c in cars))
                 if None in imgs:  # Commons lookups fail transiently under load; one retry
                     await asyncio.sleep(2)
                     imgs = [
                         i or await find_image(client, c.year, c.make, c.model) for c, i in zip(cars, imgs, strict=True)
                     ]
+                if photos_only:  # a lookup that still failed keeps the photo the car already had
+                    imgs = [i or c.image for c, i in zip(cars, imgs, strict=True)]
                 if lang == "en":  # the SEO pages are English only
                     pages[f"{slug}.html"] = guide_page(slug, title, intro, p, cars, list(imgs))
                 # The app's Rankings page reads the same lists, photos included so cards don't look them up.
@@ -375,10 +388,8 @@ async def main(langs: list[str]) -> None:
             f.write(sitemap())
     for lang, lists in files.items():
         with open(os.path.join(OUT, f"rankings.{lang}.json"), "w") as f:
-            json.dump(
-                {"updated": date.today().isoformat(), "lists": lists}, f, separators=(",", ":"), ensure_ascii=False
-            )
+            json.dump({"updated": updated[lang], "lists": lists}, f, separators=(",", ":"), ensure_ascii=False)
 
 
 if __name__ == "__main__":
-    asyncio.run(main([a for a in sys.argv[1:] if a in TEXT] or list(TEXT)))
+    asyncio.run(main([a for a in sys.argv[1:] if a in TEXT] or list(TEXT), photos_only="--photos" in sys.argv))

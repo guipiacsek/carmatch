@@ -106,7 +106,8 @@ const images = new Map<string, Promise<CarImage | null>>()
 
 // Photos load per card after results show, so they never delay the ranking.
 export function getImage(car: Pick<CarResult, "year" | "make" | "model">): Promise<CarImage | null> {
-  const qs = new URLSearchParams({ year: String(car.year), make: car.make, model: car.model }).toString()
+  // v: bump when photo selection changes, so browsers don't keep last week's cached picks
+  const qs = new URLSearchParams({ year: String(car.year), make: car.make, model: car.model, v: "2" }).toString()
   let p = images.get(qs)
   if (!p) {
     p = request<CarImage | null>(`/api/image?${qs}`).catch(() => null)
