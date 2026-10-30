@@ -16,7 +16,7 @@ from .models import Preferences
 log = logging.getLogger(__name__)
 
 CACHE_TTL = timedelta(days=4)
-CACHE_VERSION = "v12"  # bump when the response shape or ranking logic changes
+CACHE_VERSION = "v13"  # bump when the response shape or ranking logic changes
 RATE_WINDOW_SECONDS = 3600
 
 
