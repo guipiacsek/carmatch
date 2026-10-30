@@ -1,8 +1,9 @@
-import { Heart, LogIn, LogOut, Moon, Search, Sun, Trophy } from "lucide-react"
+import type { User as AuthUser } from "@supabase/supabase-js"
+import { Heart, LogOut, Moon, Search, Sun, Trophy, User } from "lucide-react"
 import { useEffect, useState, type ReactNode } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 
-import { LanguageMenu } from "@/components/LanguageMenu"
+import { LanguageMenu, menuItem, Popover } from "@/components/LanguageMenu"
 import { useAccount } from "@/hooks/account"
 import { conversionNote, useI18n } from "@/i18n"
 import { KEYS, save } from "@/lib/storage"
@@ -10,6 +11,8 @@ import { isDark, onSystemChange, setDark } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
 const restart = () => [KEYS.prefs, KEYS.step, KEYS.results].forEach((k) => save(k, null))
+// First letter of the name if the account has one, else of the email
+const initial = (u: AuthUser) => ((u.user_metadata?.full_name as string | undefined) || u.email || "?").charAt(0).toUpperCase()
 const iconBtn = "grid size-10 place-items-center rounded-xl text-muted-foreground transition hover:text-foreground"
 
 function Nav({ dark, onTheme, side }: { dark: boolean; onTheme: () => void; side: "right" | "bottom" }) {
@@ -32,17 +35,42 @@ function Nav({ dark, onTheme, side }: { dark: boolean; onTheme: () => void; side
       {link("/", t("nav.newSearch"), <Search className="size-5" aria-hidden />, restart)}
       {link("/rankings", t("nav.rankings"), <Trophy className="size-5" aria-hidden />, undefined, false)}
       {enabled && link("/favorites", t("nav.favorites"), <Heart className="size-5" aria-hidden />)}
-      {enabled && (
-        <button
-          type="button"
-          className={iconBtn}
-          onClick={user ? signOut : openAuth}
-          aria-label={user ? t("nav.signOut", { email: user.email ?? "" }) : t("nav.signIn")}
-          title={user ? t("nav.signOut", { email: user.email ?? "" }) : t("nav.signIn")}
-        >
-          {user ? <LogOut className="size-5" aria-hidden /> : <LogIn className="size-5" aria-hidden />}
-        </button>
-      )}
+      {enabled &&
+        (user ? (
+          <Popover
+            className={iconBtn}
+            side={side}
+            label={t("nav.account", { email: user.email ?? "" })}
+            trigger={
+              <span className="grid size-8 place-items-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">
+                {initial(user)}
+              </span>
+            }
+          >
+            {(close) => (
+              <>
+                <p className="max-w-56 truncate px-3 pt-2 pb-1 text-xs text-muted-foreground">{user.email}</p>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuItem}
+                  onClick={() => {
+                    close()
+                    signOut()
+                  }}
+                >
+                  <LogOut className="size-4" aria-hidden /> {t("nav.signOut")}
+                </button>
+              </>
+            )}
+          </Popover>
+        ) : (
+          <button type="button" className={iconBtn} onClick={openAuth} aria-label={t("nav.signIn")} title={t("nav.signIn")}>
+            <span className="grid size-8 place-items-center rounded-full border-2 border-current">
+              <User className="size-4" aria-hidden />
+            </span>
+          </button>
+        ))}
       <button
         type="button"
         className={iconBtn}

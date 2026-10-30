@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 
 import { LANGS, useI18n, type Lang } from "@/i18n"
 import { cn } from "@/lib/utils"
@@ -42,9 +42,20 @@ function Flag({ lang, className }: { lang: Lang; className?: string }) {
   }
 }
 
-/** Flag button next to the theme toggle; opens a list of the 4 languages. */
-export function LanguageMenu({ className, side }: { className: string; side: "right" | "bottom" }) {
-  const { lang, setLang, t } = useI18n()
+/** A nav button that opens a small menu; closes on outside click or Escape. */
+export function Popover({
+  className,
+  side,
+  label,
+  trigger,
+  children,
+}: {
+  className: string
+  side: "right" | "bottom"
+  label: string
+  trigger: ReactNode
+  children: (close: () => void) => ReactNode
+}) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
 
@@ -69,42 +80,53 @@ export function LanguageMenu({ className, side }: { className: string; side: "ri
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`${t("nav.language")}: ${LANGS[lang].name}`}
-        title={t("nav.language")}
+        aria-label={label}
+        title={label}
       >
-        <Flag lang={lang} />
+        {trigger}
       </button>
       {open && (
         <div
           role="menu"
-          aria-label={t("nav.language")}
+          aria-label={label}
           className={cn(
             "absolute z-50 grid min-w-40 gap-0.5 rounded-2xl bg-card p-1.5 shadow-[0_16px_40px_#00000026]",
             side === "right" ? "bottom-0 left-full ml-3" : "top-full right-0 mt-2",
           )}
         >
-          {(Object.keys(LANGS) as Lang[]).map((l) => (
-            <button
-              key={l}
-              type="button"
-              role="menuitemradio"
-              aria-checked={l === lang}
-              lang={l}
-              onClick={() => {
-                setLang(l)
-                setOpen(false)
-              }}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium hover:bg-muted",
-                l === lang && "bg-muted font-bold",
-              )}
-            >
-              <Flag lang={l} />
-              {LANGS[l].name}
-            </button>
-          ))}
+          {children(() => setOpen(false))}
         </div>
       )}
     </div>
+  )
+}
+
+export const menuItem = "flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium hover:bg-muted"
+
+/** Flag button next to the theme toggle; opens a list of the 4 languages. */
+export function LanguageMenu({ className, side }: { className: string; side: "right" | "bottom" }) {
+  const { lang, setLang, t } = useI18n()
+  return (
+    <Popover className={className} side={side} label={`${t("nav.language")}: ${LANGS[lang].name}`} trigger={<Flag lang={lang} />}>
+      {(close) =>
+        (Object.keys(LANGS) as Lang[]).map((l) => (
+          <button
+            key={l}
+            type="button"
+            role="menuitemradio"
+            aria-checked={l === lang}
+            lang={l}
+            onClick={() => {
+              setLang(l)
+              close()
+            }}
+            className={cn(menuItem, l === lang && "bg-muted font-bold")}
+          >
+            <Flag lang={l} />
+            {LANGS[l].name}
+          </button>
+        ))
+      }
+    </Popover>
   )
 }
