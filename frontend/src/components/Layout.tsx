@@ -1,5 +1,5 @@
 import type { User as AuthUser } from "@supabase/supabase-js"
-import { Heart, LogOut, Moon, Search, Sun, Trophy, User } from "lucide-react"
+import { Heart, LogOut, Moon, Search, Sun, Trophy } from "lucide-react"
 import { useEffect, useState, type ReactNode } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 
@@ -13,10 +13,11 @@ import { cn } from "@/lib/utils"
 const restart = () => [KEYS.prefs, KEYS.step, KEYS.results].forEach((k) => save(k, null))
 // First letter of the name if the account has one, else of the email
 const initial = (u: AuthUser) => ((u.user_metadata?.full_name as string | undefined) || u.email || "?").charAt(0).toUpperCase()
-const iconBtn = "grid size-10 place-items-center rounded-xl text-muted-foreground transition hover:text-foreground"
+const iconBtn = "grid size-10 place-items-center rounded-full text-muted-foreground transition hover:text-foreground"
+const roundBtn = "grid size-10 place-items-center rounded-full bg-card text-foreground shadow-[0_2px_8px_#00000014] transition hover:shadow-[0_4px_14px_#0000001f]"
 
-function Nav({ dark, onTheme, side }: { dark: boolean; onTheme: () => void; side: "right" | "bottom" }) {
-  const { enabled, user, openAuth, signOut } = useAccount()
+function Links() {
+  const { enabled } = useAccount()
   const { t } = useI18n()
   const link = (to: string, label: string, icon: ReactNode, onClick?: () => void, end = true) => (
     <NavLink
@@ -25,63 +26,58 @@ function Nav({ dark, onTheme, side }: { dark: boolean; onTheme: () => void; side
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={({ isActive }) => cn(iconBtn, isActive && "bg-card text-foreground shadow-[0_4px_14px_#0000001a]")}
+      className={({ isActive }) => cn(iconBtn, isActive && "bg-card text-foreground shadow-[0_2px_8px_#00000014]")}
     >
       {icon}
     </NavLink>
   )
   return (
-    <>
+    <nav aria-label="Main" className="flex gap-1">
       {link("/", t("nav.newSearch"), <Search className="size-5" aria-hidden />, restart)}
       {link("/rankings", t("nav.rankings"), <Trophy className="size-5" aria-hidden />, undefined, false)}
       {enabled && link("/favorites", t("nav.favorites"), <Heart className="size-5" aria-hidden />)}
-      {enabled &&
-        (user ? (
-          <Popover
-            className={iconBtn}
-            side={side}
-            label={t("nav.account", { email: user.email ?? "" })}
-            trigger={
-              <span className="grid size-8 place-items-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">
-                {initial(user)}
-              </span>
-            }
-          >
-            {(close) => (
-              <>
-                <p className="max-w-56 truncate px-3 pt-2 pb-1 text-xs text-muted-foreground">{user.email}</p>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={menuItem}
-                  onClick={() => {
-                    close()
-                    signOut()
-                  }}
-                >
-                  <LogOut className="size-4" aria-hidden /> {t("nav.signOut")}
-                </button>
-              </>
-            )}
-          </Popover>
-        ) : (
-          <button type="button" className={iconBtn} onClick={openAuth} aria-label={t("nav.signIn")} title={t("nav.signIn")}>
-            <span className="grid size-8 place-items-center rounded-full border-2 border-current">
-              <User className="size-4" aria-hidden />
-            </span>
-          </button>
-        ))}
+    </nav>
+  )
+}
+
+/** Rightmost: a "Log in" pill, or the account's initial in a red circle with an email + sign-out menu. */
+function Account() {
+  const { enabled, user, openAuth, signOut } = useAccount()
+  const { t } = useI18n()
+  if (!enabled) return null
+  if (!user)
+    return (
       <button
         type="button"
-        className={iconBtn}
-        onClick={onTheme}
-        aria-label={dark ? t("nav.toLight") : t("nav.toDark")}
-        title={dark ? t("nav.toLight") : t("nav.toDark")}
+        onClick={openAuth}
+        className="h-10 rounded-full bg-primary px-4 text-sm font-bold whitespace-nowrap text-primary-foreground shadow-[0_6px_18px_#d42e2e40] transition hover:brightness-110"
       >
-        {dark ? <Sun className="size-5" aria-hidden /> : <Moon className="size-5" aria-hidden />}
+        {t("nav.signIn")}
       </button>
-      <LanguageMenu className={iconBtn} side={side} />
-    </>
+    )
+  return (
+    <Popover
+      className="grid size-10 place-items-center rounded-full bg-primary text-base font-extrabold text-primary-foreground shadow-[0_6px_18px_#d42e2e40]"
+      label={t("nav.account", { email: user.email ?? "" })}
+      trigger={initial(user)}
+    >
+      {(close) => (
+        <>
+          <p className="max-w-56 truncate px-3 pt-2 pb-1 text-xs text-muted-foreground">{user.email}</p>
+          <button
+            type="button"
+            role="menuitem"
+            className={menuItem}
+            onClick={() => {
+              close()
+              signOut()
+            }}
+          >
+            <LogOut className="size-4" aria-hidden /> {t("nav.signOut")}
+          </button>
+        </>
+      )}
+    </Popover>
   )
 }
 
@@ -94,51 +90,54 @@ export function Layout() {
     setDark(!dark)
     setDarkState(!dark)
   }
+  const wrap = "mx-auto w-full max-w-[1400px] px-4 md:px-8"
   return (
-    <div className="min-h-svh bg-background text-foreground md:grid md:grid-cols-[72px_1fr]">
+    <div className="flex min-h-svh flex-col bg-background text-foreground">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50">
         {t("nav.skip")}
       </a>
 
-      {/* Desktop: slim left rail. Mobile: top bar with the same links. */}
-      <aside className="sticky top-0 z-10 hidden h-svh flex-col items-center justify-between py-7 md:flex">
-        <Link to="/" onClick={restart} title={t("nav.restart")} className="text-[26px] font-extrabold tracking-tighter">
-          c<span className="text-primary">.</span>
-          <span className="sr-only">CarMatch</span>
-        </Link>
-        <nav aria-label="Main" className="grid gap-5">
-          <Nav dark={dark} onTheme={toggleTheme} side="right" />
-        </nav>
-        <span className="text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase [writing-mode:vertical-rl]">
-          CarMatch
-        </span>
-      </aside>
-      <header className="flex items-center justify-between px-4 pt-4 md:hidden">
-        <Link to="/" onClick={restart} title={t("nav.restart")} className="text-xl font-extrabold tracking-tight">
-          Car<span className="text-primary">Match</span>
-        </Link>
-        <nav aria-label="Main" className="flex gap-1">
-          <Nav dark={dark} onTheme={toggleTheme} side="bottom" />
-        </nav>
+      <header className="sticky top-0 z-30 border-b border-foreground/10 bg-background/85 backdrop-blur-md">
+        <div className={cn(wrap, "flex h-16 items-center gap-1 sm:gap-3")}>
+          <Link to="/" onClick={restart} title={t("nav.restart")} className="mr-1 flex items-baseline text-[26px] font-extrabold tracking-tighter sm:mr-3">
+            c<span className="text-primary">.</span>
+            <span className="ml-2 hidden text-lg tracking-tight sm:inline">
+              Car<span className="text-primary">Match</span>
+            </span>
+            <span className="sr-only sm:hidden">CarMatch</span>
+          </Link>
+          <Links />
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
+            <LanguageMenu className={cn(roundBtn, "flex w-auto gap-2 px-2.5 sm:px-3")} />
+            <button
+              type="button"
+              className={roundBtn}
+              onClick={toggleTheme}
+              aria-label={dark ? t("nav.toLight") : t("nav.toDark")}
+              title={dark ? t("nav.toLight") : t("nav.toDark")}
+            >
+              {dark ? <Sun className="size-[18px]" aria-hidden /> : <Moon className="size-[18px]" aria-hidden />}
+            </button>
+            <Account />
+          </div>
+        </div>
       </header>
 
-      <div className="flex min-w-0 flex-col">
-        <main id="main" className="w-full max-w-[1400px] flex-1 px-4 pt-6 pb-10 md:pt-8 md:pr-8 md:pl-2">
-          <Outlet />
-        </main>
-        <footer className="space-y-1 px-4 pb-24 text-[11px] text-muted-foreground md:pl-2">
-          <p>
-            <strong className="font-semibold">{t("footer.estimates")}</strong> {t("footer.confirm")}
-            {note && ` ${note}`}
-          </p>
-          <p>
-            {t("footer.data")}{" "}
-            <a href="/best" className="underline underline-offset-2">
-              {t("footer.guides")}
-            </a>
-          </p>
-        </footer>
-      </div>
+      <main id="main" className={cn(wrap, "flex-1 pt-6 pb-10 md:pt-8")}>
+        <Outlet />
+      </main>
+      <footer className={cn(wrap, "space-y-1 pb-24 text-[11px] text-muted-foreground")}>
+        <p>
+          <strong className="font-semibold">{t("footer.estimates")}</strong> {t("footer.confirm")}
+          {note && ` ${note}`}
+        </p>
+        <p>
+          {t("footer.data")}{" "}
+          <a href="/best" className="underline underline-offset-2">
+            {t("footer.guides")}
+          </a>
+        </p>
+      </footer>
     </div>
   )
 }

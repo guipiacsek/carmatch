@@ -6,7 +6,7 @@ export const es: Dict = {
   "nav.newSearch": "Nueva búsqueda",
   "nav.rankings": "Rankings",
   "nav.favorites": "Mis favoritos",
-  "nav.signIn": "Iniciar sesión",
+  "nav.signIn": "Ingresar",
   "nav.signOut": "Cerrar sesión",
   "nav.account": "Cuenta ({email})",
   "nav.toLight": "Cambiar a modo claro",

@@ -6,7 +6,7 @@ export const en = {
   "nav.newSearch": "New search",
   "nav.rankings": "Rankings",
   "nav.favorites": "My favorites",
-  "nav.signIn": "Sign in",
+  "nav.signIn": "Log in",
   "nav.signOut": "Sign out",
   "nav.account": "Account ({email})",
   "nav.toLight": "Switch to light mode",

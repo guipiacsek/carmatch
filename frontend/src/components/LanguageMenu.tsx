@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 
 import { LANGS, useI18n, type Lang } from "@/i18n"
@@ -45,13 +46,11 @@ function Flag({ lang, className }: { lang: Lang; className?: string }) {
 /** A nav button that opens a small menu; closes on outside click or Escape. */
 export function Popover({
   className,
-  side,
   label,
   trigger,
   children,
 }: {
   className: string
-  side: "right" | "bottom"
   label: string
   trigger: ReactNode
   children: (close: () => void) => ReactNode
@@ -89,10 +88,7 @@ export function Popover({
         <div
           role="menu"
           aria-label={label}
-          className={cn(
-            "absolute z-50 grid min-w-40 gap-0.5 rounded-2xl bg-card p-1.5 shadow-[0_16px_40px_#00000026]",
-            side === "right" ? "bottom-0 left-full ml-3" : "top-full right-0 mt-2",
-          )}
+          className="absolute top-full right-0 z-50 mt-2 grid min-w-40 gap-0.5 rounded-2xl bg-card p-1.5 shadow-[0_16px_40px_#00000026]"
         >
           {children(() => setOpen(false))}
         </div>
@@ -104,10 +100,17 @@ export function Popover({
 export const menuItem = "flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium hover:bg-muted"
 
 /** Flag button next to the theme toggle; opens a list of the 4 languages. */
-export function LanguageMenu({ className, side }: { className: string; side: "right" | "bottom" }) {
+export function LanguageMenu({ className }: { className: string }) {
   const { lang, setLang, t } = useI18n()
   return (
-    <Popover className={className} side={side} label={`${t("nav.language")}: ${LANGS[lang].name}`} trigger={<Flag lang={lang} />}>
+    <Popover className={className} label={`${t("nav.language")}: ${LANGS[lang].name}`} trigger={
+        <>
+          <Flag lang={lang} />
+          <span className="hidden text-xs font-bold sm:inline">{lang.split("-")[0].toUpperCase()}</span>
+          <ChevronDown className="hidden size-3.5 text-muted-foreground sm:block" aria-hidden />
+        </>
+      }
+    >
       {(close) =>
         (Object.keys(LANGS) as Lang[]).map((l) => (
           <button
