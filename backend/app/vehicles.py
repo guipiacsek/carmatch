@@ -24,10 +24,11 @@ FE_DATASET_URL = "https://www.fueleconomy.gov/feg/epadata/vehicles.csv.zip"
 # The only brands CarMatch offers or recommends (display names); other makes are dropped from the catalog.
 BRANDS = frozenset(
     {
-        "Acura", "Alfa Romeo", "Aston Martin", "Audi", "BMW", "Buick", "Cadillac", "Chevrolet", "Chrysler", "Dodge",
-        "Ferrari", "Fiat", "Ford", "Genesis", "GMC", "Honda", "Hyundai", "Infiniti", "Jaguar", "Jeep", "Kia",
-        "Lamborghini", "Land Rover", "Lexus", "Lincoln", "Mazda", "McLaren", "Mercedes", "MINI",
-        "Mitsubishi", "Nissan", "Porsche", "Ram", "Subaru", "Tesla", "Toyota", "Volkswagen", "Volvo",
+        "Acura", "Alfa Romeo", "Aston Martin", "Audi", "Bentley", "BMW", "Bugatti", "Buick", "Cadillac", "Chevrolet",
+        "Chrysler", "Dodge", "Ferrari", "Fiat", "Ford", "Genesis", "GMC", "Honda", "Hyundai", "Infiniti", "Jaguar",
+        "Jeep", "Kia", "Lamborghini", "Land Rover", "Lexus", "Lincoln", "Lotus", "Lucid", "Maserati", "Mazda",
+        "McLaren", "Mercedes", "MINI", "Mitsubishi", "Nissan", "Polestar", "Porsche", "Ram", "Rivian", "Rolls-Royce",
+        "Subaru", "Tesla", "Toyota", "Volkswagen", "Volvo",
     }
 )  # fmt: skip
 

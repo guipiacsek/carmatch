@@ -29,6 +29,13 @@ def test_hard_filters() -> None:
     assert not matches(veh(2, 2020, "Mazda", "MX-5", vclass="Two Seaters"), prefs(seats=[4]))
 
 
+def test_all_wheels_matches_awd_and_4wd() -> None:  # the beginner question: "does it need all four wheels?"
+    assert matches(veh(1, 2020, "Toyota", "RAV4", drive=("AWD",)), prefs(drivetrain="AWD/4WD"))
+    assert matches(veh(2, 2020, "Toyota", "Tacoma", drive=("4WD", "RWD")), prefs(drivetrain="AWD/4WD"))
+    assert not matches(veh(3, 2020, "Toyota", "Camry", drive=("FWD",)), prefs(drivetrain="AWD/4WD"))
+    assert not matches(veh(2, 2020, "Toyota", "Tacoma", drive=("4WD",)), prefs(drivetrain="AWD"))  # experts: exact
+
+
 def test_new_condition_limits_to_recent_model_years() -> None:
     assert not matches(veh(1, MAX_YEAR - 3, "Toyota", "RAV4"), prefs(condition="new", year_max=MAX_YEAR))
     assert matches(veh(1, MAX_YEAR - 1, "Toyota", "RAV4"), prefs(condition="new", year_max=MAX_YEAR))

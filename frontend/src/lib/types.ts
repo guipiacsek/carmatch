@@ -19,7 +19,7 @@ export type FuelType = (typeof FUEL_TYPES)[number]
 export type Priority = (typeof PRIORITIES)[number]
 export type Condition = "new" | "used" | "either"
 export type Transmission = "auto" | "manual" | "any"
-export type Drivetrain = (typeof DRIVETRAINS)[number] | "any"
+export type Drivetrain = (typeof DRIVETRAINS)[number] | "any" | "AWD/4WD" // AWD/4WD: the beginner "all four wheels" answer
 
 export const LANGUAGES = ["en", "pt-BR", "es", "ja"] as const
 export type Language = (typeof LANGUAGES)[number]

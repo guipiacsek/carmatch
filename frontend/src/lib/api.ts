@@ -56,7 +56,8 @@ export async function deleteAccount(): Promise<void> {
 }
 
 export async function getMakes(): Promise<string[]> {
-  return (await request<{ makes: string[] }>("/api/makes")).makes
+  // v: bump when the brand list changes; browsers cache it for a day
+  return (await request<{ makes: string[] }>("/api/makes?v=2")).makes
 }
 
 // The backend streams one NDJSON line per event: meta, a "cars" line per finished GPT batch, then "done".

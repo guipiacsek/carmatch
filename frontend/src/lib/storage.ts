@@ -21,6 +21,7 @@ export const KEYS = {
   prefs: "carmatch.prefs",
   step: "carmatch.step",
   results: "carmatch.results",
+  knowledge: "carmatch.knowledge", // the first question's answer: how much of the wizard to show
   pendingFavorite: "carmatch.pendingFavorite", // localStorage: survives the email-confirmation tab
   lastSearch: "carmatch.lastSearch", // localStorage: { id, at } of the last saved search, for the top-bar button
 }

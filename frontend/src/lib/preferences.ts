@@ -45,7 +45,7 @@ export const hasSavedPrefs = () => load<Preferences | null>(KEYS.prefs, null) !=
 const ALLOWED: Partial<Record<keyof Preferences, readonly unknown[]>> = {
   condition: ["new", "used", "either"],
   transmission: ["auto", "manual", "any"],
-  drivetrain: [...DRIVETRAINS, "any"],
+  drivetrain: [...DRIVETRAINS, "any", "AWD/4WD"],
   body_types: BODY_TYPES,
   fuel_types: FUEL_TYPES,
   priorities: PRIORITIES,

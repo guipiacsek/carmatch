@@ -12,7 +12,7 @@ import { KEYS, load, save } from "@/lib/storage"
 import { isDark, onSystemChange, setDark } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
-const restart = () => [KEYS.prefs, KEYS.step, KEYS.results].forEach((k) => save(k, null))
+const restart = () => [KEYS.prefs, KEYS.step, KEYS.results, KEYS.knowledge].forEach((k) => save(k, null))
 // First letter of the name if the account has one, else of the email
 const initial = (u: AuthUser) => ((u.user_metadata?.full_name as string | undefined) || u.email || "?").charAt(0).toUpperCase()
 const iconBtn = "grid size-10 place-items-center rounded-full text-muted-foreground transition hover:text-foreground"

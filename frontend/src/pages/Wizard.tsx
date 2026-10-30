@@ -32,7 +32,28 @@ import {
 // Catalog values keep their English API value; only the label is translated.
 const label = (v: string) => t(`v.${v}` as Key)
 
-function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+// The first question decides how much of the wizard to show.
+type Level = "novice" | "some" | "expert"
+const NOVICE_BRANDS = new Set(
+  ["Toyota", "Honda", "Ford", "Chevrolet", "Nissan", "Hyundai", "Kia", "Volkswagen", "Subaru", "Mazda", "Jeep",
+   "Tesla", "BMW", "Mercedes", "Audi", "Lexus", "Porsche", "Volvo", "Dodge", "Ram"].map((b) => b.toLowerCase()),
+)
+const EXPERT_BRANDS = new Set( // everyone else sees the other 35
+  ["Aston Martin", "Bentley", "Bugatti", "Lamborghini", "Lotus", "Lucid", "Maserati", "McLaren", "Polestar", "Rivian",
+   "Rolls-Royce"].map((b) => b.toLowerCase()),
+)
+function levelShows(level: Level, make: string): boolean {
+  const m = make.toLowerCase()
+  return level === "expert" || (level === "novice" ? NOVICE_BRANDS.has(m) : !EXPERT_BRANDS.has(m))
+}
+// Drivetrain answers each level can give; switching level resets one the new level can't show.
+const DRIVE_OPTIONS: Record<Level, readonly Drivetrain[]> = {
+  novice: ["any", "AWD/4WD"],
+  some: ["any", ...DRIVETRAINS],
+  expert: ["any", ...DRIVETRAINS],
+}
+
+function Brands({ value, onChange, level }: { value: string[]; onChange: (v: string[]) => void; level: Level }) {
   const [makes, setMakes] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState("")
@@ -40,8 +61,11 @@ function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) 
     getMakes().then(setMakes, () => setError("brands.error"))
   }, [])
   const shown = useMemo(
-    () => (makes ?? []).filter((m) => value.includes(m) || m.toLowerCase().includes(query.trim().toLowerCase())),
-    [makes, query, value],
+    () =>
+      (makes ?? []).filter(
+        (m) => value.includes(m) || (levelShows(level, m) && m.toLowerCase().includes(query.trim().toLowerCase())),
+      ),
+    [makes, query, value, level],
   )
   const toggle = (m: string) => onChange(value.includes(m) ? value.filter((b) => b !== m) : [...value, m])
 
@@ -106,16 +130,36 @@ function Brands({ value, onChange }: { value: string[]; onChange: (v: string[]) 
 }
 
 interface Step {
-  title: Key
-  help?: Key
-  render: (p: Preferences, set: (patch: Partial<Preferences>) => void) => ReactNode
+  title: Key | ((level: Level) => Key)
+  help?: Key | ((level: Level) => Key | undefined)
+  render: (
+    p: Preferences,
+    set: (patch: Partial<Preferences>) => void,
+    level: Level,
+    setLevel: (l: Level) => void,
+  ) => ReactNode
 }
 
 const STEPS: Step[] = [
   {
+    title: "know.title",
+    render: (_p, _set, level, setLevel) => (
+      <SingleChoice<Level>
+        label={t("know.title")}
+        value={level}
+        onChange={setLevel}
+        options={[
+          { value: "novice", label: t("know.novice"), hint: t("know.noviceHint") },
+          { value: "some", label: t("know.some"), hint: t("know.someHint") },
+          { value: "expert", label: t("know.expert"), hint: t("know.expertHint") },
+        ]}
+      />
+    ),
+  },
+  {
     title: "brands.title",
     help: "brands.help",
-    render: (p, set) => <Brands value={p.brands} onChange={(brands) => set({ brands })} />,
+    render: (p, set, level) => <Brands value={p.brands} onChange={(brands) => set({ brands })} level={level} />,
   },
   {
     title: "years.title",
@@ -234,18 +278,34 @@ const STEPS: Step[] = [
     ),
   },
   {
-    title: "drive.title",
-    render: (p, set) => (
-      <SingleChoice<Drivetrain>
-        label={t("drive.label")}
-        value={p.drivetrain}
-        onChange={(drivetrain) => set({ drivetrain })}
-        options={[
-          { value: "any", label: t("wiz.noPref") },
-          ...DRIVETRAINS.map((d) => ({ value: d, label: t(`drive.${d}`) })),
-        ]}
-      />
-    ),
+    title: (level) => (level === "novice" ? "drive.awdQ" : "drive.title"),
+    help: (level) => (level === "novice" ? "drive.awdHelp" : undefined),
+    render: (p, set, level) =>
+      level === "novice" ? (
+        <SingleChoice<Drivetrain>
+          label={t("drive.awdQ")}
+          value={p.drivetrain}
+          onChange={(drivetrain) => set({ drivetrain })}
+          options={[
+            { value: "AWD/4WD", label: t("drive.yes") },
+            { value: "any", label: t("drive.no") },
+          ]}
+        />
+      ) : (
+        <SingleChoice<Drivetrain>
+          label={t("drive.label")}
+          value={p.drivetrain}
+          onChange={(drivetrain) => set({ drivetrain })}
+          options={[
+            { value: "any", label: t("wiz.noPref") },
+            // experts get the short names (4WD shown as 4x4); others get them spelled out
+            ...DRIVETRAINS.map((d) => ({
+              value: d,
+              label: level === "expert" ? (d === "4WD" ? "4x4" : d) : t(`drive.${d}`),
+            })),
+          ]}
+        />
+      ),
   },
   {
     title: "seats.title",
@@ -266,6 +326,7 @@ export default function Wizard() {
   useI18n() // re-render on language change
   const navigate = useNavigate()
   const [prefs, setPrefs] = useState<Preferences>(loadPrefs)
+  const [level, setLevelState] = useState<Level>(() => load<Level>(KEYS.knowledge, "some"))
   const [step, setStep] = useState(() => Math.min(load<number>(KEYS.step, 0), STEPS.length - 1))
   const heading = useRef<HTMLHeadingElement>(null)
   const first = useRef(true)
@@ -278,8 +339,15 @@ export default function Wizard() {
   }, [step])
 
   const set = (patch: Partial<Preferences>) => setPrefs((p) => ({ ...p, ...patch }))
+  const setLevel = (l: Level) => {
+    setLevelState(l)
+    save(KEYS.knowledge, l)
+    if (!DRIVE_OPTIONS[l].includes(prefs.drivetrain)) set({ drivetrain: "any" })
+  }
+  const pick = <T,>(x: T | ((l: Level) => T)) => (typeof x === "function" ? (x as (l: Level) => T)(level) : x)
   const last = step === STEPS.length - 1
   const current = STEPS[step]
+  const help = current.help && pick(current.help)
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -311,11 +379,11 @@ export default function Wizard() {
       <Card>
         <CardHeader>
           <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">
-            {t(current.title)}
+            {t(pick(current.title))}
           </h1>
-          {current.help && <p className="text-sm text-muted-foreground">{t(current.help)}</p>}
+          {help && <p className="text-sm text-muted-foreground">{t(help)}</p>}
         </CardHeader>
-        <CardContent>{current.render(prefs, set)}</CardContent>
+        <CardContent>{current.render(prefs, set, level, setLevel)}</CardContent>
         <CardFooter className="justify-between gap-3">
           <Button variant="ghost" size="lg" onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
             <ArrowLeft aria-hidden /> {t("wiz.back")}

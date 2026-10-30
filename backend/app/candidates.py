@@ -103,7 +103,8 @@ def matches(v: Vehicle, p: Preferences, relax: Relax = NO_RELAX) -> bool:
         return False
     if p.fuel_types and v.fuel not in p.fuel_types:
         return False
-    if p.drivetrain != "any" and not relax.drivetrain and p.drivetrain not in v.drive:
+    wanted = {"AWD", "4WD"} if p.drivetrain == "AWD/4WD" else {p.drivetrain}
+    if p.drivetrain != "any" and not relax.drivetrain and not wanted & v.drive:
         return False
     if p.transmission != "any" and v.transmission != p.transmission:
         return False

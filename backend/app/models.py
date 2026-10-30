@@ -17,7 +17,7 @@ Drivetrain = Literal["AWD", "FWD", "RWD", "4WD"]
 Language = Literal["en", "pt-BR", "es", "ja"]  # the AI writes its text in this language
 Seats = Annotated[int, Field(ge=2, le=9)]
 # Shorter names shown everywhere instead of EPA's spelling; old names still arrive from cached lists and old links.
-DISPLAY_NAMES = {"McLaren Automotive": "McLaren", "Mercedes-Benz": "Mercedes"}
+DISPLAY_NAMES = {"McLaren Automotive": "McLaren", "Mercedes-Benz": "Mercedes", "Bugatti Rimac": "Bugatti"}
 Brand = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40, pattern=r"^[A-Za-z0-9 .&'\-]+$")
 ]
@@ -26,7 +26,7 @@ Brand = Annotated[
 class Preferences(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    brands: list[Brand] = Field(default_factory=list, max_length=50)  # empty = no preference; fits all 38 brands
+    brands: list[Brand] = Field(default_factory=list, max_length=50)  # empty = no preference; fits all 46 brands
     year_min: int = Field(ge=MIN_YEAR, le=MAX_YEAR)
     year_max: int = Field(ge=MIN_YEAR, le=MAX_YEAR)
     condition: Condition
@@ -35,7 +35,7 @@ class Preferences(BaseModel):
     fuel_types: list[FuelType] = Field(default_factory=list, max_length=5)  # empty = any
     priorities: list[Priority] = Field(default_factory=list, max_length=8)
     transmission: Transmission = "any"
-    drivetrain: Drivetrain | Literal["any"] = "any"
+    drivetrain: Drivetrain | Literal["any", "AWD/4WD"] = "any"  # AWD/4WD: "all four wheels", for beginners
     seats: list[Seats] = Field(default_factory=list, max_length=8)  # exact seat counts wanted; empty = any
     language: Language = "en"
 
