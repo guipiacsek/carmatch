@@ -48,10 +48,10 @@ def test_old_cars_skip_a_newer_generation_photo() -> None:
     assert run(2012, "Toyota", "Camry", [[lead("Toyota Camry", "2018_Toyota_Camry.jpg")]]) is None
 
 
-def test_undated_lead_photo_only_for_recent_cars() -> None:
-    pages = [[lead("Porsche Macan", "Porsche_Macan_4_IMG_2153.jpg")]]
-    assert run(date.today().year, "Porsche", "Macan", pages) is not None
-    assert run(2020, "Porsche", "Macan", pages) is None
+def test_undated_lead_photo_is_never_trusted() -> None:
+    # Wikipedia's "Alfa Romeo Giulia" is the 1962 car; its photo name has no year
+    pages = [[lead("Alfa Romeo Giulia", "Alfa_Romeo_Giulia_Super_(cropped).jpg")]]
+    assert run(date.today().year, "Alfa Romeo", "Giulia", pages) is None
 
 
 def test_disambiguation_falls_back_to_search_and_checks_the_make() -> None:

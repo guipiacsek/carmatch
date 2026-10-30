@@ -5,7 +5,6 @@ import asyncio
 import html
 import logging
 import re
-from datetime import date
 from typing import Any
 
 import httpx
@@ -18,7 +17,6 @@ COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php"
 # A lead photo shows the current generation; older cars use the year-matched Commons search instead.
 LEAD_YEAR_GAP = 4  # model generations last ~5-7 years
-LEAD_UNDATED_MAX_AGE = 3  # file names without a year: only trust them for recent cars
 MAX_YEAR_GAP = 15  # rejects e.g. a 1958 Land Cruiser for a 2027, but allows a 2014 Durango (same generation)
 _limit = asyncio.Semaphore(3)  # Wikimedia asks API clients not to fire many requests in parallel
 _cache: dict[str, CarImage | None] = {}
@@ -90,10 +88,10 @@ async def _wiki_lead(client: httpx.AsyncClient, make: str, model: str, year: int
     if not page or _norm(make) not in _norm(page["title"]):
         return None
     file = page["pageimage"]
-    years = _years(file)  # the first year is the model year; later ones are usually the photo's date
-    if years and abs(years[0] - year) > LEAD_YEAR_GAP:
-        return None
-    if not years and year < date.today().year - LEAD_UNDATED_MAX_AGE:
+    # The first year is the model year; later ones are usually the photo's date. No year: can't tell the generation
+    # (the "Alfa Romeo Giulia" article is the 1962 car), so the year-matched Commons search decides instead.
+    years = _years(file)
+    if not years or abs(years[0] - year) > LEAD_YEAR_GAP:
         return None
     resp = await client.get(
         COMMONS_API,
