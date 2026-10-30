@@ -186,3 +186,9 @@ def test_language_reaches_the_model_and_the_cache_key() -> None:
     data = json.loads(user["content"])
     assert data["language"] == "ja" and "language" not in data["preferences"]
     assert cache_key(p) != cache_key(prefs(language="en"))
+
+
+def test_every_offered_brand_can_be_picked() -> None:
+    from app.vehicles import BRANDS
+
+    assert len(prefs(brands=sorted(BRANDS)).brands) == len(BRANDS)

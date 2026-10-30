@@ -24,7 +24,7 @@ Brand = Annotated[
 class Preferences(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    brands: list[Brand] = Field(default_factory=list, max_length=25)  # empty = no preference
+    brands: list[Brand] = Field(default_factory=list, max_length=50)  # empty = no preference; fits all 38 brands
     year_min: int = Field(ge=MIN_YEAR, le=MAX_YEAR)
     year_max: int = Field(ge=MIN_YEAR, le=MAX_YEAR)
     condition: Condition
