@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useI18n, type Key } from "@/i18n"
 import { ApiError, getSharedResults } from "@/lib/api"
-import { KEYS, load } from "@/lib/storage"
+import { KEYS, load, save } from "@/lib/storage"
 import type { RecommendResponse } from "@/lib/types"
 
 export default function Shared() {
@@ -18,10 +18,13 @@ export default function Shared() {
   const mine = load<{ id: string } | null>(KEYS.lastSearch, null, localStorage)?.id === shareId // opened from "Last search"
 
   useEffect(() => {
-    getSharedResults(shareId).then(setData, (e: unknown) =>
-      setError(e instanceof ApiError && e.status === 404 ? "sh.expired" : "sh.error"),
-    )
-  }, [shareId])
+    getSharedResults(shareId).then(setData, (e: unknown) => {
+      const expired = e instanceof ApiError && e.status === 404
+      // a repeated search reuses the server's older cache entry, so "Last search" can outlive it
+      if (expired && mine) save(KEYS.lastSearch, null, localStorage)
+      setError(expired ? "sh.expired" : "sh.error")
+    })
+  }, [shareId, mine])
 
   const startLink = (
     <Button asChild>

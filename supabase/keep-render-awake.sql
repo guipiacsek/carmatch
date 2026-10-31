@@ -1,6 +1,6 @@
 -- Keeps the Render API awake so searches don't wait 30-60 s for a cold start.
 -- Run once in Supabase: Dashboard > SQL Editor > New query > paste > Run.
--- (GitHub's scheduled workflow only fired every few hours, so Supabase's own scheduler does the pinging.)
+-- (A GitHub scheduled workflow only fired every few hours, so Supabase's own scheduler does the pinging.)
 -- Not in migrations/: the PGlite migration tests don't have these extensions.
 
 create extension if not exists pg_cron;

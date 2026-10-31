@@ -13,7 +13,7 @@ import { hasSavedPrefs, loadPrefs, prefChips, takePresetFromUrl } from "@/lib/pr
 import { KEYS, load, save } from "@/lib/storage"
 import type { CarResult, RecommendResponse } from "@/lib/types"
 
-const MAX_RESULTS = 9 // backend TARGET_RESULTS: 3 batches x 3
+const MAX_RESULTS = 8 // backend TARGET_RESULTS: 2 batches x 4
 
 interface Stored {
   prefs: string

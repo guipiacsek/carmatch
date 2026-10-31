@@ -111,7 +111,10 @@ export function getImage(car: Pick<CarResult, "year" | "make" | "model">): Promi
   const qs = new URLSearchParams({ year: String(car.year), make: car.make, model: car.model, v: "3" }).toString()
   let p = images.get(qs)
   if (!p) {
-    p = request<CarImage | null>(`/api/image?${qs}`).catch(() => null)
+    p = request<CarImage | null>(`/api/image?${qs}`).catch(() => {
+      images.delete(qs) // let a later card retry after a blip or the photo limit
+      return null
+    })
     images.set(qs, p)
   }
   return p

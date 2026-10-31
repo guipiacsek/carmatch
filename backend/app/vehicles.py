@@ -47,7 +47,6 @@ class Vehicle:
     transmission: str  # "auto" | "manual"
     mpg: int | None
     mpge: int | None
-    cylinders: int | None
     max_seats: int  # upper bound by class, used to prefilter min_seats
 
 
@@ -201,7 +200,6 @@ def parse_rows(rows: "csv.DictReader[str]") -> list[Vehicle]:
                 transmission="manual" if r["trany"].startswith("Manual") else "auto",
                 mpg=None if fuel == "Electric" else mpg,
                 mpge=mpg if fuel == "Electric" else (alt if fuel == "Plug-in Hybrid" else None),
-                cylinders=_int(r["cylinders"]),
                 max_seats=max_seats_for(r["VClass"], bodies),
             )
         )

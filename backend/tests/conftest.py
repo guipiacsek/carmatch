@@ -36,7 +36,6 @@ def veh(
         transmission=trans,
         mpg=mpg,
         mpge=None,
-        cylinders=4,
         max_seats=max_seats_for(vclass, bodies),
     )
 

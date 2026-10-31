@@ -32,7 +32,7 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public")
 USED = {"condition": "used", "year_min": MAX_YEAR - 11, "year_max": MAX_YEAR - 6}
 NEW = {"condition": "new", "year_min": MAX_YEAR - 1, "year_max": MAX_YEAR}
 
-RANK_SIZE = 10  # "Top 10" lists; the app's searches show 9
+RANK_SIZE = 10  # "Top 10" lists; the app's searches show 8
 
 # slug, preferences (anything left out takes the Preferences default)
 GUIDES: list[tuple[str, dict[str, object]]] = [
