@@ -181,6 +181,8 @@ export const en = {
   "card.fuel": "Fuel",
   "card.efficiency": "Efficiency",
   "card.seatsUnit": "seats",
+  "card.forSale": "For sale now",
+  "card.listed": "from {price} · {n} listings",
   "card.aiEstimate": "AI estimate",
   "card.aboveBudget": "Above budget",
   "card.priceRange": "Price range",

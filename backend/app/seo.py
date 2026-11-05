@@ -4,7 +4,8 @@ Run from backend/ with OPENAI_API_KEY set:  python -m app.seo [en pt-BR es ja]  
 Writes frontend/public/rankings.{lang}.json (the app's Rankings page, one file per language). The English pass also
 writes the static SEO pages (frontend/public/best/*.html, sitemap.xml). The output is static: nothing regenerates it
 on its own, so pass only the languages you want rebuilt.
-Add --photos to keep the saved lists (no OpenAI calls) and only refresh their photos.
+Add --photos to keep the saved lists (no OpenAI calls) and only refresh their photos, or --new to keep the saved
+lists and photos as they are and search only the guides that aren't saved yet.
 """
 
 import asyncio
@@ -79,6 +80,77 @@ GUIDES: list[tuple[str, dict[str, object]]] = [
         },
     ),
     ("luxury-suvs-under-70000", {**NEW, "body_types": ["SUV"], "budget": 70_000, "priorities": ["luxury"]}),
+    (
+        "manual-cars-under-50000",
+        {
+            "condition": "either",
+            "year_min": MAX_YEAR - 5,
+            "year_max": MAX_YEAR,
+            "transmission": "manual",
+            "budget": 50_000,
+            "priorities": ["performance"],
+        },
+    ),
+    ("minivans-under-50000", {**NEW, "body_types": ["Minivan"], "budget": 50_000, "priorities": ["family"]}),
+    (
+        "used-trucks-under-30000",
+        {**USED, "body_types": ["Truck"], "budget": 30_000, "priorities": ["towing", "reliability"]},
+    ),
+    (
+        "awd-suvs-under-40000",
+        {**NEW, "body_types": ["SUV"], "drivetrain": "AWD/4WD", "budget": 40_000, "priorities": ["reliability"]},
+    ),
+    (
+        "off-road-suvs-under-50000",
+        {
+            **NEW,
+            "body_types": ["SUV", "Truck"],
+            "drivetrain": "4WD",
+            "budget": 50_000,
+            "priorities": ["off_road"],
+            # EPA marks many soft-roaders "4WD or AWD"; these makes build trail-rated 4x4s
+            "brands": ["Chevrolet", "Ford", "GMC", "Jeep", "Land Rover", "Lexus", "Nissan", "Ram", "Rivian", "Toyota"],
+        },
+    ),
+    (
+        "used-electric-cars-under-25000",
+        {**USED, "fuel_types": ["Electric"], "budget": 25_000, "priorities": ["commuting"]},
+    ),
+    (
+        "plug-in-hybrids-under-50000",
+        {**NEW, "fuel_types": ["Plug-in Hybrid"], "budget": 50_000, "priorities": ["fuel_economy"]},
+    ),
+    (
+        "commuter-cars-under-30000",
+        {
+            **NEW,
+            "body_types": ["Compact", "Hatchback", "Sedan"],
+            "budget": 30_000,
+            "priorities": ["commuting", "fuel_economy"],
+        },
+    ),
+    (  # older than USED: 5-10-year-old sedans rarely sell for under $15k
+        "used-sedans-under-15000",
+        {
+            "condition": "used",
+            "year_min": MAX_YEAR - 15,
+            "year_max": MAX_YEAR - 8,
+            "body_types": ["Sedan"],
+            "budget": 15_000,
+            "priorities": ["reliability"],
+        },
+    ),
+    (
+        "used-luxury-cars-under-35000",
+        {
+            **USED,
+            "body_types": ["Sedan", "SUV"],
+            "budget": 35_000,
+            "priorities": ["luxury"],
+            "brands": ["Acura", "Audi", "BMW", "Cadillac", "Genesis", "Infiniti", "Jaguar", "Land Rover", "Lexus",
+                       "Lincoln", "Mercedes", "Porsche", "Volvo"],
+        },
+    ),
 ]
 
 # Per language and slug: title, short label (shown under a "TOP 10" badge), intro.
@@ -105,6 +177,28 @@ TEXT: dict[str, dict[str, tuple[str, str, str]]] = {
             "Coupes and convertibles that are fun to drive, new or nearly new, for under $50k."),
         "luxury-suvs-under-70000": ("Top 10 new luxury SUVs under $70,000", "New luxury SUVs under $70,000",
             "Premium cabins and badges, new and under $70k."),
+        "manual-cars-under-50000": ("Top 10 manual transmission cars under $50,000", "Manual cars under $50,000",
+            "Three pedals and a stick: the most rewarding manual cars, new or nearly new, for under $50k."),
+        "minivans-under-50000": ("Top 10 new minivans under $50,000", "New minivans under $50,000",
+            "Sliding doors, three rows and room for everything: new minivans for under $50k."),
+        "used-trucks-under-30000": ("Top 10 used pickup trucks under $30,000", "Used pickup trucks under $30,000",
+            "Tough, dependable pickups that still tow and haul, used and under $30k."),
+        "awd-suvs-under-40000": ("Top 10 new AWD SUVs under $40,000", "New AWD SUVs under $40,000",
+            "All-wheel-drive SUVs for snow, rain and dirt roads, new and under $40k."),
+        "off-road-suvs-under-50000": ("Top 10 new off-road SUVs and trucks under $50,000",
+            "Off-road 4x4s under $50,000",
+            "Real 4x4s built for trails, mud and rocks, new and under $50k."),
+        "used-electric-cars-under-25000": ("Top 10 used electric cars under $25,000",
+            "Used electric cars under $25,000",
+            "Cheap to run and cheaper to buy: used EVs for daily driving under $25k."),
+        "plug-in-hybrids-under-50000": ("Top 10 new plug-in hybrids under $50,000", "New plug-in hybrids under $50,000",
+            "Electric for the commute, gas for road trips: new plug-in hybrids under $50k."),
+        "commuter-cars-under-30000": ("Top 10 new commuter cars under $30,000", "New commuter cars under $30,000",
+            "Efficient, easy to park and affordable: new cars for the daily commute under $30k."),
+        "used-sedans-under-15000": ("Top 10 used sedans under $15,000", "Used sedans under $15,000",
+            "Reliable, affordable used sedans that keep running, for under $15k."),
+        "used-luxury-cars-under-35000": ("Top 10 used luxury cars under $35,000", "Used luxury cars under $35,000",
+            "Premium sedans and SUVs at a used price: luxury for under $35k."),
     },
     "pt-BR": {
         "new-suvs-under-40000": ("Top 10 SUVs novos até US$ 40.000", "SUVs novos até US$ 40.000",
@@ -130,6 +224,32 @@ TEXT: dict[str, dict[str, tuple[str, str, str]]] = {
             "Cupês e conversíveis divertidos de dirigir, novos ou seminovos, por até US$ 50 mil."),
         "luxury-suvs-under-70000": ("Top 10 SUVs de luxo novos até US$ 70.000", "SUVs de luxo novos até US$ 70.000",
             "Cabines e marcas premium, novos e por até US$ 70 mil."),
+        "manual-cars-under-50000": ("Top 10 carros com câmbio manual até US$ 50.000", "Carros manuais até US$ 50.000",
+            "Três pedais e alavanca: os carros manuais mais prazerosos, novos ou seminovos, por até US$ 50 mil."),
+        "minivans-under-50000": ("Top 10 minivans novas até US$ 50.000", "Minivans novas até US$ 50.000",
+            "Portas corrediças, três fileiras e espaço para tudo: minivans novas por até US$ 50 mil."),
+        "used-trucks-under-30000": ("Top 10 picapes usadas até US$ 30.000", "Picapes usadas até US$ 30.000",
+            "Picapes robustas e confiáveis que ainda rebocam e carregam, usadas e por até US$ 30 mil."),
+        "awd-suvs-under-40000": ("Top 10 SUVs novos com tração integral até US$ 40.000",
+            "SUVs com tração integral até US$ 40.000",
+            "SUVs com tração nas quatro rodas para neve, chuva e terra, novos e por até US$ 40 mil."),
+        "off-road-suvs-under-50000": ("Top 10 SUVs e picapes off-road novos até US$ 50.000",
+            "4x4 off-road até US$ 50.000",
+            "4x4 de verdade para trilhas, lama e pedras, novos e por até US$ 50 mil."),
+        "used-electric-cars-under-25000": ("Top 10 carros elétricos usados até US$ 25.000",
+            "Elétricos usados até US$ 25.000",
+            "Baratos de rodar e mais baratos de comprar: elétricos usados para o dia a dia por até US$ 25 mil."),
+        "plug-in-hybrids-under-50000": ("Top 10 híbridos plug-in novos até US$ 50.000",
+            "Híbridos plug-in novos até US$ 50.000",
+            "Elétrico no trajeto diário, gasolina na estrada: híbridos plug-in novos por até US$ 50 mil."),
+        "commuter-cars-under-30000": ("Top 10 carros novos para o dia a dia até US$ 30.000",
+            "Carros para o dia a dia até US$ 30.000",
+            "Econômicos, fáceis de estacionar e acessíveis: carros novos para o trajeto diário por até US$ 30 mil."),
+        "used-sedans-under-15000": ("Top 10 sedãs usados até US$ 15.000", "Sedãs usados até US$ 15.000",
+            "Sedãs usados confiáveis e acessíveis que continuam rodando, por até US$ 15 mil."),
+        "used-luxury-cars-under-35000": ("Top 10 carros de luxo usados até US$ 35.000",
+            "Carros de luxo usados até US$ 35.000",
+            "Sedãs e SUVs premium a preço de usado: luxo por até US$ 35 mil."),
     },
     "es": {
         "new-suvs-under-40000": ("Top 10 SUVs nuevas por menos de US$40,000", "SUVs nuevas por menos de US$40,000",
@@ -160,6 +280,36 @@ TEXT: dict[str, dict[str, tuple[str, str, str]]] = {
         "luxury-suvs-under-70000": ("Top 10 SUVs de lujo nuevas por menos de US$70,000",
             "SUVs de lujo nuevas por menos de US$70,000",
             "Interiores y marcas premium, nuevas y por menos de US$70 mil."),
+        "manual-cars-under-50000": ("Top 10 autos con transmisión manual por menos de US$50,000",
+            "Autos manuales por menos de US$50,000",
+            "Tres pedales y palanca: los autos manuales más divertidos, nuevos o seminuevos, por menos de US$50 mil."),
+        "minivans-under-50000": ("Top 10 minivans nuevas por menos de US$50,000",
+            "Minivans nuevas por menos de US$50,000",
+            "Puertas corredizas, tres filas y espacio para todo: minivans nuevas por menos de US$50 mil."),
+        "used-trucks-under-30000": ("Top 10 pickups usadas por menos de US$30,000",
+            "Pickups usadas por menos de US$30,000",
+            "Pickups resistentes y confiables que todavía remolcan y cargan, usadas y por menos de US$30 mil."),
+        "awd-suvs-under-40000": ("Top 10 SUVs nuevas con tracción integral por menos de US$40,000",
+            "SUVs AWD por menos de US$40,000",
+            "SUVs con tracción en las cuatro ruedas para nieve, lluvia y tierra, nuevas y por menos de US$40 mil."),
+        "off-road-suvs-under-50000": ("Top 10 SUVs y pickups todoterreno nuevas por menos de US$50,000",
+            "4x4 todoterreno por menos de US$50,000",
+            "4x4 de verdad para senderos, lodo y rocas, nuevas y por menos de US$50 mil."),
+        "used-electric-cars-under-25000": ("Top 10 autos eléctricos usados por menos de US$25,000",
+            "Eléctricos usados por menos de US$25,000",
+            "Baratos de manejar y más baratos de comprar: eléctricos usados para el día a día por menos de US$25 mil."),
+        "plug-in-hybrids-under-50000": ("Top 10 híbridos enchufables nuevos por menos de US$50,000",
+            "Híbridos enchufables por menos de US$50,000",
+            "Eléctrico para ir al trabajo, gasolina para viajar: híbridos enchufables nuevos por menos de US$50 mil."),
+        "commuter-cars-under-30000": ("Top 10 autos nuevos para ir al trabajo por menos de US$30,000",
+            "Autos para el día a día por menos de US$30,000",
+            "Eficientes, fáciles de estacionar y accesibles: autos nuevos para el día a día por menos de US$30 mil."),
+        "used-sedans-under-15000": ("Top 10 sedanes usados por menos de US$15,000",
+            "Sedanes usados por menos de US$15,000",
+            "Sedanes usados confiables y accesibles que siguen andando, por menos de US$15 mil."),
+        "used-luxury-cars-under-35000": ("Top 10 autos de lujo usados por menos de US$35,000",
+            "Autos de lujo usados por menos de US$35,000",
+            "Sedanes y SUVs premium a precio de usado: lujo por menos de US$35 mil."),
     },
     "ja": {
         "new-suvs-under-40000": ("4万ドル以下の新車SUV トップ10", "4万ドル以下の新車SUV",
@@ -182,6 +332,26 @@ TEXT: dict[str, dict[str, tuple[str, str, str]]] = {
             "運転が楽しいクーペとオープンカー。新車または高年式で5万ドル以下。"),
         "luxury-suvs-under-70000": ("7万ドル以下の新車高級SUV トップ10", "7万ドル以下の新車高級SUV",
             "上質な室内とブランド力。新車で7万ドル以下。"),
+        "manual-cars-under-50000": ("5万ドル以下のMT車 トップ10", "5万ドル以下のMT車",
+            "3ペダルとシフトレバー。新車または高年式で5万ドル以下の、運転が楽しいマニュアル車。"),
+        "minivans-under-50000": ("5万ドル以下の新車ミニバン トップ10", "5万ドル以下の新車ミニバン",
+            "スライドドアと3列シートで何でも積める、5万ドル以下の新車ミニバン。"),
+        "used-trucks-under-30000": ("3万ドル以下の中古ピックアップ トップ10", "3万ドル以下の中古ピックアップ",
+            "牽引も積載もまだまだこなす、頑丈で信頼できる3万ドル以下の中古ピックアップ。"),
+        "awd-suvs-under-40000": ("4万ドル以下の新車AWD SUV トップ10", "4万ドル以下のAWD SUV",
+            "雪道、雨、未舗装路に強い全輪駆動SUV。新車で4万ドル以下。"),
+        "off-road-suvs-under-50000": ("5万ドル以下の新車オフロード4WD トップ10", "5万ドル以下のオフロード4WD",
+            "林道、ぬかるみ、岩場に挑める本格4WD。新車で5万ドル以下。"),
+        "used-electric-cars-under-25000": ("2万5千ドル以下の中古電気自動車 トップ10", "2万5千ドル以下の中古EV",
+            "維持費も購入費も安い、毎日の足に使える2万5千ドル以下の中古EV。"),
+        "plug-in-hybrids-under-50000": ("5万ドル以下の新車プラグインハイブリッド トップ10", "5万ドル以下のPHEV",
+            "通勤は電気、遠出はガソリン。新車で5万ドル以下のプラグインハイブリッド。"),
+        "commuter-cars-under-30000": ("3万ドル以下の新車通勤カー トップ10", "3万ドル以下の通勤カー",
+            "燃費がよく駐車しやすく手頃。毎日の通勤向け、3万ドル以下の新車。"),
+        "used-sedans-under-15000": ("1万5千ドル以下の中古セダン トップ10", "1万5千ドル以下の中古セダン",
+            "長く走り続ける、信頼できて手頃な1万5千ドル以下の中古セダン。"),
+        "used-luxury-cars-under-35000": ("3万5千ドル以下の中古高級車 トップ10", "3万5千ドル以下の中古高級車",
+            "高級セダンとSUVを中古価格で。3万5千ドル以下のラグジュアリー。"),
     },
 }  # fmt: skip
 
@@ -329,17 +499,19 @@ def sitemap() -> str:
     return f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{rows}</urlset>\n'
 
 
-async def main(langs: list[str], photos_only: bool = False) -> None:
-    """photos_only: keep each saved list's cars (no OpenAI) and only look their photos up again."""
+async def main(langs: list[str], photos_only: bool = False, new_only: bool = False) -> None:
+    """photos_only: keep each saved list's cars (no OpenAI) and only look their photos up again.
+    new_only: keep saved lists as they are, photos included, and search only the guides not saved yet."""
     saved: dict[str, dict[str, list[CarResult]]] = {}
     updated = {lang: date.today().isoformat() for lang in langs}
-    if photos_only:
+    if photos_only or new_only:
         for lang in langs:
             with open(os.path.join(OUT, f"rankings.{lang}.json")) as f:
                 data = json.load(f)
-            updated[lang] = data["updated"]  # the rankings themselves didn't change
+            if photos_only:
+                updated[lang] = data["updated"]  # the rankings themselves didn't change
             saved[lang] = {lst["slug"]: [CarResult.model_validate(c) for c in lst["cars"]] for lst in data["lists"]}
-    else:
+    if not photos_only:
         await load_catalog()
     # Everything is built in memory and written only once every list succeeded, so a failed OpenAI call
     # can't leave frontend/public half old, half new.
@@ -351,9 +523,12 @@ async def main(langs: list[str], photos_only: bool = False) -> None:
             for slug, raw in GUIDES:
                 title, short, intro = TEXT[lang][slug]
                 p = Preferences.model_validate({**raw, "language": lang})
-                cars = saved[lang][slug] if photos_only else await search(client, p)
-                imgs = await asyncio.gather(*(find_image(client, c.year, c.make, c.model) for c in cars))
-                if None in imgs:  # Commons lookups fail transiently under load; one retry
+                keep = new_only and slug in saved[lang]
+                cars = saved[lang][slug] if photos_only or keep else await search(client, p)
+                imgs = [c.image for c in cars] if keep else await asyncio.gather(
+                    *(find_image(client, c.year, c.make, c.model) for c in cars)
+                )
+                if None in imgs and not keep:  # Commons lookups fail transiently under load; one retry
                     await asyncio.sleep(2)
                     imgs = [
                         i or await find_image(client, c.year, c.make, c.model) for c, i in zip(cars, imgs, strict=True)
@@ -392,4 +567,5 @@ async def main(langs: list[str], photos_only: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main([a for a in sys.argv[1:] if a in TEXT] or list(TEXT), photos_only="--photos" in sys.argv))
+    langs = [a for a in sys.argv[1:] if a in TEXT] or list(TEXT)
+    asyncio.run(main(langs, photos_only="--photos" in sys.argv, new_only="--new" in sys.argv))

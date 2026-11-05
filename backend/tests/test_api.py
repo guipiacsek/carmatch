@@ -288,3 +288,27 @@ def test_new_photo_lookups_are_rate_limited_but_cached_ones_are_free(
     assert [ask("RAV4"), ask("Camry"), ask("Corolla")] == [200, 200, 429]
     monkeypatch.setattr(main, "is_cached", lambda *_: True)  # already looked up: no Wikimedia call, no count
     assert ask("Corolla") == 200
+
+
+def test_listings_endpoint_checks_the_car_caches_and_limits_new_lookups(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dataclasses import replace
+
+    from app.models import ListingSummary
+
+    calls: list[str] = []
+
+    async def fake_fetch(_http: object, year: int, make: str, model: str) -> ListingSummary:
+        calls.append(model)
+        return ListingSummary(count=3, min_price=20_000, checked="2026-11-05")
+
+    ask = lambda model: client.get(f"/api/listings?year=2020&make=Toyota&model={model}")  # noqa: E731
+    assert ask("RAV4").json() is None  # no key configured: nothing is looked up
+    monkeypatch.setattr(main, "settings", replace(main.settings, autodev_api_key="k", listings_rate_limit_per_hour=1))
+    monkeypatch.setattr(main, "fetch_listings", fake_fetch)
+    assert ask("Corolla").status_code == 404 and not calls  # not in the catalog: the quota isn't touched
+    assert ask("RAV4").json()["min_price"] == 20_000
+    assert ask("RAV4").status_code == 200  # cached: no new lookup, not counted
+    assert ask("Highlander").status_code == 429
+    assert calls == ["RAV4"]

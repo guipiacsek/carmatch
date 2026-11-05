@@ -3,6 +3,7 @@ import { lazy, Suspense, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { arcColor } from "@/components/CarCard"
+import { ListedPrice } from "@/components/ListedPrice"
 import { ResultList } from "@/components/ResultList"
 import { Button } from "@/components/ui/button"
 import { MAX_FAVORITES, useAccount } from "@/hooks/account"
@@ -73,6 +74,7 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
           </div>
         )}
         <div className="grid gap-2.5 px-6 sm:pr-7 sm:pl-0">
+          <ListedPrice car={car} />
           <p className="label-caps text-muted-foreground">
             {t("card.aiEstimate")} {car.over_budget && <span className="ml-2 text-primary">{t("card.aboveBudget")}</span>}
           </p>

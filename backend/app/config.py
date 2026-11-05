@@ -20,6 +20,11 @@ class Settings:
     # Opening a car's details is a smaller GPT call, so it gets its own, larger hourly budget.
     # New photo lookups (each one calls Wikipedia/Commons); cached photos don't count.
     image_rate_limit_per_hour: int = field(default_factory=lambda: int(os.getenv("IMAGE_RATE_LIMIT_PER_HOUR", "150")))
+    # Live listing prices (auto.dev free plan: 1,000 lookups a month); new lookups per IP per hour.
+    autodev_api_key: str = field(default_factory=lambda: os.getenv("AUTODEV_API_KEY", ""))
+    listings_rate_limit_per_hour: int = field(
+        default_factory=lambda: int(os.getenv("LISTINGS_RATE_LIMIT_PER_HOUR", "30"))
+    )
     details_rate_limit_per_hour: int = field(
         default_factory=lambda: int(os.getenv("DETAILS_RATE_LIMIT_PER_HOUR", "40"))
     )

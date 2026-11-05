@@ -6,6 +6,7 @@ import type {
   CarImage,
   CarResult,
   Language,
+  ListingSummary,
   Preferences,
   RankingsData,
   RecommendEvent,
@@ -116,6 +117,22 @@ export function getImage(car: Pick<CarResult, "year" | "make" | "model">): Promi
       return null
     })
     images.set(qs, p)
+  }
+  return p
+}
+
+const listings = new Map<string, Promise<ListingSummary | null>>()
+
+// Live "for sale now" price per card; the AI estimate shows on its own while this loads or when it's null.
+export function getListings(car: Pick<CarResult, "year" | "make" | "model">): Promise<ListingSummary | null> {
+  const qs = new URLSearchParams({ year: String(car.year), make: car.make, model: car.model }).toString()
+  let p = listings.get(qs)
+  if (!p) {
+    p = request<ListingSummary | null>(`/api/listings?${qs}`).catch(() => {
+      listings.delete(qs)
+      return null
+    })
+    listings.set(qs, p)
   }
   return p
 }

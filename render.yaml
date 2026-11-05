@@ -27,6 +27,8 @@ services:
         sync: false
       - key: ALLOWED_ORIGIN_REGEX
         sync: false
+      - key: AUTODEV_API_KEY
+        sync: false
       - key: RATE_LIMIT_PER_HOUR
         value: "12"  # searches per IP per hour
       - key: DETAILS_RATE_LIMIT_PER_HOUR

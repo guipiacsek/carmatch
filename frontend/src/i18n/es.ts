@@ -174,6 +174,8 @@ export const es: Dict = {
   "card.fuel": "Combustible",
   "card.efficiency": "Eficiencia",
   "card.seatsUnit": "asientos",
+  "card.forSale": "En venta ahora",
+  "card.listed": "desde {price} · {n} anuncios",
   "card.aiEstimate": "Estimación de la IA",
   "card.aboveBudget": "Sobre el presupuesto",
   "card.priceRange": "Rango de precio",

@@ -1,6 +1,7 @@
 import { CarFront, ExternalLink, Heart } from "lucide-react"
 import { lazy, Suspense, useState } from "react"
 
+import { ListedPrice } from "@/components/ListedPrice"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAccount } from "@/hooks/account"
@@ -189,6 +190,7 @@ export function CarCard({
           ))}
         </dl>
 
+        <ListedPrice car={car} />
         <p className="label-caps text-muted-foreground">
           {t("card.aiEstimate")}
           {car.over_budget && <span className="ml-2 text-primary">{t("card.aboveBudget")}</span>}

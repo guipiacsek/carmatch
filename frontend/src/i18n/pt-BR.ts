@@ -174,6 +174,8 @@ export const ptBR: Dict = {
   "card.fuel": "Combustível",
   "card.efficiency": "Consumo",
   "card.seatsUnit": "lugares",
+  "card.forSale": "À venda agora",
+  "card.listed": "a partir de {price} · {n} anúncios",
   "card.aiEstimate": "Estimativa da IA",
   "card.aboveBudget": "Acima do orçamento",
   "card.priceRange": "Faixa de preço",

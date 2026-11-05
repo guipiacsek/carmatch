@@ -72,6 +72,12 @@ class CarImage(BaseModel):
     license_url: str | None = None
 
 
+class ListingSummary(BaseModel):
+    count: int  # US dealer listings for sale now (0 = none found)
+    min_price: int | None  # lowest asking price, USD
+    checked: str  # ISO date of the lookup (cached 4 days)
+
+
 class CarResult(BaseModel):
     car_key: str
     rank: int

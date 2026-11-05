@@ -174,6 +174,8 @@ export const ja: Dict = {
   "card.fuel": "燃料",
   "card.efficiency": "燃費",
   "card.seatsUnit": "人乗り",
+  "card.forSale": "販売中",
+  "card.listed": "{price}から · {n}件",
   "card.aiEstimate": "AIの予想",
   "card.aboveBudget": "予算オーバー",
   "card.priceRange": "価格帯",

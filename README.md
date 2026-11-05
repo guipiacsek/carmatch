@@ -4,7 +4,7 @@ Answer ten quick questions and get **9 ranked car recommendations** for the US m
 
 - Candidates come only from **fueleconomy.gov** (EPA/DOE) data. No keys needed.
 - **gpt-4.1-mini** ranks them with Structured Outputs. It can only pick from the candidate ids it was given, and every pick is validated.
-- Prices are labeled **AI estimates**. Photos come from **Wikimedia Commons**, credited on each card.
+- Prices are labeled **AI estimates**; when dealer listings are found (auto.dev), cards also show "For sale now: from $X · N listings". Photos come from **Wikimedia Commons**, credited on each card.
 - Guests can use everything. An account (Supabase email/password) lets you keep up to 10 favorites.
 
 ```
@@ -87,7 +87,7 @@ delete from favorites where car_key like 'test-%';
 ### Backend on Render
 
 1. In Render, open **New → Blueprint**, pick this repo, and it reads `render.yaml`: a native Python web service (no Docker), root `backend/`, health check `/health`.
-2. Fill in the env vars it asks for: `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` (optional), and `ALLOWED_ORIGINS` (your Vercel URL, e.g. `https://carmatch.vercel.app`). Optionally set `ALLOWED_ORIGIN_REGEX` for preview deploys.
+2. Fill in the env vars it asks for: `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` (optional), and `ALLOWED_ORIGINS` (your Vercel URL, e.g. `https://carmatch.vercel.app`). Optionally set `ALLOWED_ORIGIN_REGEX` for preview deploys, and `AUTODEV_API_KEY` (free at auto.dev) for live listing prices.
 3. The build step downloads the EPA dataset, so the first request doesn't wait for it. Note that the free plan sleeps when idle.
 4. Check that `https://<service>.onrender.com/health` returns `{"status":"ok","catalog_loaded":true}`.
 
@@ -106,6 +106,7 @@ The rate limiter reads the client IP from `X-Forwarded-For`: private `10.x` hops
 | GET | `/health` | Liveness check, plus whether the vehicle catalog has loaded |
 | GET | `/api/makes` | Brand list (38 curated brands) |
 | GET | `/api/image?year=&make=&model=` | Commons photo + attribution for one card (loaded after results) |
+| GET | `/api/listings?year=&make=&model=` | Live dealer listings count + lowest price (auto.dev, needs `AUTODEV_API_KEY`; cached 4 days) |
 | POST | `/api/car-details` | Opened card: GPT overview, pros/cons, reliability, trims, used-buying tips, rivals, grounded in EPA facts (cached 4 days, 40/hour/IP) |
 | GET | `/api/results/{share_id}` | Shared results (the share id is the cache key; links last 4 days) |
 | GET | `/api/client-ip` | The address the rate limiter counts you under |

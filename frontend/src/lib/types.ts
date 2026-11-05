@@ -51,6 +51,13 @@ export interface CarImage {
   license_url: string | null
 }
 
+/** Dealer listings for sale now (auto.dev), from /api/listings. */
+export interface ListingSummary {
+  count: number
+  min_price: number | null // lowest asking price, USD
+  checked: string // ISO date of the lookup
+}
+
 export interface CarResult {
   car_key: string
   rank: number
