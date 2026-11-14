@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n, type Key } from "@/i18n"
 import { ApiError, getCarDetails } from "@/lib/api"
-import { carName, efficiency, priceRange } from "@/lib/format"
+import { carName, efficiency, priceRange, transmission } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
 import type { CarDetails, CarImage, CarResult } from "@/lib/types"
 
@@ -67,7 +67,7 @@ export default function CarDetailsDialog({
     [t("det.body"), v(car.body_type)],
     [t("card.fuel"), v(car.fuel_type)],
     [t("drive.label"), car.drivetrain],
-    [t("trans.label"), v(car.transmission)],
+    [t("trans.label"), transmission(car)],
     [t("seats.label"), String(car.seats)],
     [t("det.class"), details?.epa.epa_class ?? "…"],
   ]

@@ -132,7 +132,6 @@ export const es: Dict = {
   "err.invalid": "Algunas respuestas parecen no válidas. Revísalas e inténtalo de nuevo.",
   "err.network": "No se pudo conectar con CarMatch. Revisa tu conexión e inténtalo de nuevo.",
   "err.generic": "Algo salió mal. Inténtalo de nuevo.",
-  "err.dropped": "La conexión se cortó antes de recibir todos los resultados. Inténtalo de nuevo.",
 
   "load.label": "Buscando tus resultados",
   "load.finding": "Buscando",

@@ -1,4 +1,4 @@
-import { money, t } from "@/i18n"
+import { money, t, type Key } from "@/i18n"
 
 import type { CarResult } from "./types"
 
@@ -9,6 +9,13 @@ export function efficiency(car: CarResult): string {
   if (car.fuel_type === "Plug-in Hybrid" && car.mpge) return `${car.mpg ?? "?"} MPG · ${car.mpge} MPGe`
   return car.mpg ? `${car.mpg} MPG` : "n/a"
 }
+
+/** "Automatic or Manual" (cars sold with both) as translated labels: "Automatic / Manual". */
+export const transmission = (car: CarResult) =>
+  car.transmission
+    .split(" or ")
+    .map((x) => t(`v.${x}` as Key))
+    .join(" / ")
 
 /** The AI price range in the current UI currency. */
 export function priceRange(car: CarResult): string {

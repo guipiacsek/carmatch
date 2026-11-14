@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
 const monthYear = (iso: string, locale: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString(locale, { month: "long", year: "numeric" })
 
-/** /rankings: the 10 static top-10 lists. /rankings/:slug: one list, with the app's cards, compare and favorites. */
+/** /rankings: the static top-10 lists. /rankings/:slug: one list, with the app's cards, compare and favorites. */
 export default function Rankings() {
   const { slug } = useParams()
   const { lang, t } = useI18n()

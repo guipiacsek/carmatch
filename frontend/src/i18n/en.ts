@@ -136,7 +136,6 @@ export const en = {
   "err.invalid": "Some answers look invalid. Please review them and try again.",
   "err.network": "Couldn't reach CarMatch. Check your connection and try again.",
   "err.generic": "Something went wrong. Please try again.",
-  "err.dropped": "The connection dropped before all results arrived. Please try again.",
 
   // Loading screen
   "load.label": "Finding your matches",

@@ -5,7 +5,7 @@ import { CarCard, CarPhoto } from "@/components/CarCard"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useCarImage } from "@/hooks/useCarImage"
 import { t, useI18n, type Key } from "@/i18n"
-import { carName, efficiency, priceRange } from "@/lib/format"
+import { carName, efficiency, priceRange, transmission } from "@/lib/format"
 import { listingsUrl } from "@/lib/listings"
 import type { CarResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -19,10 +19,12 @@ export function ResultList({
   cars,
   showRank = true,
   ordered = true,
+  livePrices = false,
 }: {
   cars: CarResult[]
   showRank?: boolean
   ordered?: boolean
+  livePrices?: boolean
 }) {
   useI18n()
   const [picked, setPicked] = useState<string[]>([])
@@ -48,6 +50,7 @@ export function ResultList({
               car={car}
               index={i}
               showRank={showRank}
+              livePrice={livePrices}
               compare={{
                 selected: picked.includes(car.car_key),
                 disabled: !picked.includes(car.car_key) && picked.length >= MAX_COMPARE,
@@ -133,7 +136,7 @@ function CompareTable({ cars, onRemove }: { cars: CarResult[]; onRemove: (key: s
     { label: t("card.efficiency"), cell: efficiency },
     { label: t("card.fuel"), cell: (c) => v(c.fuel_type) },
     { label: t("drive.label"), cell: (c) => c.drivetrain },
-    { label: t("trans.label"), cell: (c) => v(c.transmission) },
+    { label: t("trans.label"), cell: transmission },
     { label: t("seats.label"), cell: (c) => c.seats, best: (c) => c.seats === mostSeats },
     {
       label: t("card.why"),

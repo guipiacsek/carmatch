@@ -1,6 +1,6 @@
 # CarMatch
 
-Answer ten quick questions and get **9 ranked car recommendations** for the US market, grounded in real vehicle data.
+Answer a few quick questions and get **8 ranked car recommendations** for the US market, grounded in real vehicle data.
 
 - Candidates come only from **fueleconomy.gov** (EPA/DOE) data. No keys needed.
 - **gpt-4.1-mini** ranks them with Structured Outputs. It can only pick from the candidate ids it was given, and every pick is validated.
@@ -16,10 +16,10 @@ supabase/   SQL migrations + PGlite tests                            → Supabas
 ## How a search works
 
 1. The wizard keeps your answers in `sessionStorage`. "Find a car" sends `POST /api/recommend`.
-2. The backend validates the input with strict Pydantic models and an 8 KB body cap. It hashes the normalized preferences (SHA-256). If that hash is cached (in memory, then Supabase, 7-day TTL), it returns the cached answer without counting against the rate limit.
-3. Otherwise it checks the rate limit: 8 searches per hour per IP, a sliding window in Postgres with an in-memory fallback. Over the limit, it returns `429` with `Retry-After`.
-4. It filters the EPA catalog (about 39k vehicles from 1990 onward) by your hard constraints, groups the matches by model year, and keeps a diverse set of at most 40 candidates. If fewer than 7 survive, it relaxes **brand**, then **drivetrain**, then **year range**, and tells you what it relaxed.
-5. The candidates are split into 3 groups and ranked by 3 parallel GPT calls. Each returns 4 picks: id (constrained by an enum to its group's ids), seats, price range, rank, score, and 3 bullets. The best 3 valid picks per call are kept, for 9 results, and each batch streams to the browser as it lands. Invalid, duplicate or too-few-seats picks are dropped and backfilled from the data. Cars whose estimated price is over budget are flagged and moved down.
+2. The backend validates the input with strict Pydantic models and an 8 KB body cap. It hashes the normalized preferences (SHA-256). If that hash is cached (in memory, then Supabase, 4-day TTL), it returns the cached answer without counting against the rate limit.
+3. Otherwise it checks the rate limit: 12 searches per hour per IP, a sliding window in Postgres with an in-memory fallback. Over the limit, it returns `429` with `Retry-After`.
+4. It filters the EPA catalog (about 39k vehicles from 1990 onward) by your hard constraints, groups the matches by model year, and keeps a diverse set of at most 40 candidates. If fewer than 8 survive, it relaxes **brand**, then **drivetrain**, then **year range**, and tells you what it relaxed.
+5. The candidates are split into 2 groups and ranked by 2 parallel GPT calls. Each returns 5 picks: id (constrained by an enum to its group's ids), seats, price range, rank, score, and 3 bullets. The best 4 valid picks per call are kept, for 8 results, and each batch streams to the browser as it lands. Invalid, duplicate or too-few-seats picks are dropped and backfilled from the data. Cars whose estimated price is over budget are flagged and moved down.
 6. Results return right away. Each card then fetches its Commons photo, author and license from `/api/image`.
 
 ## Local setup
@@ -104,7 +104,7 @@ The rate limiter reads the client IP from `X-Forwarded-For`: private `10.x` hops
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/health` | Liveness check, plus whether the vehicle catalog has loaded |
-| GET | `/api/makes` | Brand list (38 curated brands) |
+| GET | `/api/makes` | Brand list (46 curated brands) |
 | GET | `/api/image?year=&make=&model=` | Commons photo + attribution for one card (loaded after results) |
 | GET | `/api/listings?year=&make=&model=` | Live dealer listings count + lowest price (auto.dev, needs `AUTODEV_API_KEY`; cached 4 days) |
 | POST | `/api/car-details` | Opened card: GPT overview, pros/cons, reliability, trims, used-buying tips, rivals, grounded in EPA facts (cached 4 days, 40/hour/IP) |

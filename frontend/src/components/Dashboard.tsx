@@ -261,7 +261,7 @@ export function Dashboard({ cars, prefs }: { cars: CarResult[]; prefs: Preferenc
         <h3 className="flex items-baseline justify-between text-[15px] font-bold">
           {t("dash.all")} <small className="text-xs font-medium text-muted-foreground">{t("dash.allHint")}</small>
         </h3>
-        <ResultList cars={cars} />
+        <ResultList cars={cars} livePrices />
       </section>
 
       {open && <Details car={open.car} color={open.color} onClose={() => setOpen(null)} />}

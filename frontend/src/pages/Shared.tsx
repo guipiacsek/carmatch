@@ -61,7 +61,7 @@ export default function Shared() {
                 <p>{data.notice}</p>
               </div>
             )}
-            <ResultList cars={data.results} />
+            <ResultList cars={data.results} livePrices />
           </div>
         )}
       </div>

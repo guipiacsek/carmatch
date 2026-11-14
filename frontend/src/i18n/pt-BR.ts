@@ -132,7 +132,6 @@ export const ptBR: Dict = {
   "err.invalid": "Algumas respostas parecem inválidas. Revise-as e tente novamente.",
   "err.network": "Não foi possível conectar ao CarMatch. Verifique sua conexão e tente novamente.",
   "err.generic": "Algo deu errado. Tente novamente.",
-  "err.dropped": "A conexão caiu antes de todos os resultados chegarem. Tente novamente.",
 
   "load.label": "Encontrando seus resultados",
   "load.finding": "Buscando",

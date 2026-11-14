@@ -16,7 +16,7 @@ const CarDetailsDialog = lazy(() => import("@/components/CarDetailsDialog"))
 
 export function CarPhoto({ car, image }: { car: CarResult; image: CarImage | null | undefined }) {
   const [failed, setFailed] = useState(false)
-  const name = `${car.year} ${car.make} ${car.model}`
+  const name = carName(car)
   if (image === undefined) return <Skeleton className="aspect-[16/10] rounded-none" />
   if (!image || failed) {
     return (
@@ -98,11 +98,13 @@ export function CarCard({
   car,
   index = 0,
   showRank = true,
+  livePrice = false,
   compare,
 }: {
   car: CarResult
   index?: number
   showRank?: boolean
+  livePrice?: boolean // search results only: each lookup spends the monthly auto.dev quota
   compare?: CompareControl
 }) {
   const { isFavorite, toggleFavorite } = useAccount()
@@ -190,7 +192,7 @@ export function CarCard({
           ))}
         </dl>
 
-        <ListedPrice car={car} />
+        {livePrice && <ListedPrice car={car} />}
         <p className="label-caps text-muted-foreground">
           {t("card.aiEstimate")}
           {car.over_budget && <span className="ml-2 text-primary">{t("card.aboveBudget")}</span>}

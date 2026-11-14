@@ -39,8 +39,6 @@ function changed() {
   listeners.forEach((l) => l())
 }
 
-export const getLang = () => lang
-
 export function setLang(next: Lang): void {
   lang = next
   document.documentElement.lang = next

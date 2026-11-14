@@ -65,7 +65,7 @@ def background(coro: Coroutine[Any, Any, Any]) -> None:
 
 async def warm_connections(http: httpx.AsyncClient) -> None:
     """Open (or keep open) the TLS connections a search needs. On Render's small CPU a fresh handshake to
-    Supabase and OpenAI cost ~2s per search; with HTTP/2 one warm connection serves all 3 parallel calls."""
+    Supabase and OpenAI cost ~2s per search; with HTTP/2 one warm connection serves both parallel calls."""
     global _last_warm
     if time.monotonic() - _last_warm < WARM_MIN_GAP:
         return
@@ -226,13 +226,13 @@ async def listings(
     # Only cars we could have recommended, so junk requests can't spend the monthly lookup quota.
     if not any(v.year == year and v.make == make and model.startswith(v.base_model) for v in catalog.vehicles):
         raise HTTPException(404, "Unknown car")
+    if not settings.autodev_api_key:
+        return None
     http: httpx.AsyncClient = request.app.state.http
     key = listings_key(year, make, model)
     if cached := await cache_get(http, key):
         response.headers["Cache-Control"] = "public, max-age=86400"
         return ListingSummary.model_validate(cached)
-    if not settings.autodev_api_key:
-        return None
     allowed, retry_after = await rate_limit_hit(
         http, f"listings:{client_ip(request)}", settings.listings_rate_limit_per_hour
     )
