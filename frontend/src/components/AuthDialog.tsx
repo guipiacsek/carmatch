@@ -163,6 +163,14 @@ export function AuthDialog({
                       ? t("auth.signIn")
                       : t("auth.create")}
             </Button>
+            {mode === "signup" && !recovery && (
+              <p className="text-xs text-muted-foreground">
+                {t("auth.privacy")}{" "}
+                <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-2">
+                  {t("footer.privacy")}
+                </a>
+              </p>
+            )}
             {mode === "forgot" && !recovery && (
               <button
                 type="button"

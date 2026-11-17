@@ -191,6 +191,10 @@ export function Layout() {
           <a href="/best" className="underline underline-offset-2">
             {t("footer.guides")}
           </a>
+          {" · "}
+          <Link to="/privacy" className="underline underline-offset-2">
+            {t("footer.privacy")}
+          </Link>
         </p>
       </footer>
     </div>

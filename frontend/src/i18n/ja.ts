@@ -23,6 +23,7 @@ export const ja: Dict = {
   "footer.data":
     "車両データ：fueleconomy.gov（EPA/DOE）。写真：Wikimedia Commonsの投稿者（各カードに記載）。「販売情報を見る」リンクはアフィリエイトリンクになる場合があります。",
   "footer.guides": "購入ガイド",
+  "footer.privacy": "プライバシー",
   "currency.note": "米国市場の価格を{date}の為替レートで{currency}に換算しています。",
 
   "wiz.question": "質問 {n} / {total}",
@@ -266,6 +267,7 @@ export const ja: Dict = {
   "auth.title": "気になる車を保存しよう",
   "auth.sent": "{email}に確認リンクを送りました。リンクを開いて登録を完了すると、選んだ車が保存されます。",
   "auth.desc": "ログインまたは無料アカウントを作成すると、お気に入りを10台まで保存できます。",
+  "auth.privacy": "アカウントを作成すると、メールアドレスとお気に入りの取り扱いに同意したものとみなされます。",
   "auth.signIn": "ログイン",
   "auth.create": "アカウント作成",
   "auth.email": "メールアドレス",

@@ -23,6 +23,7 @@ export const en = {
   "footer.data":
     "Vehicle data from fueleconomy.gov (EPA/DOE). Photos from Wikimedia Commons contributors, credited on each card. \"See listings\" links may become affiliate links.",
   "footer.guides": "Car buying guides",
+  "footer.privacy": "Privacy",
   "currency.note": "US market prices, converted to {currency} at the {date} exchange rate.",
 
   // Wizard
@@ -280,6 +281,7 @@ export const en = {
   "auth.title": "Save cars you love",
   "auth.sent": "We sent a confirmation link to {email}. Open it to finish signing up, and we'll save the car you picked.",
   "auth.desc": "Sign in or create a free account to keep up to 10 favorites.",
+  "auth.privacy": "By creating an account you agree to how we handle your email and favorites.",
   "auth.signIn": "Sign in",
   "auth.create": "Create account",
   "auth.email": "Email",

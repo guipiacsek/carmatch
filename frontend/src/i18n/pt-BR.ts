@@ -23,6 +23,7 @@ export const ptBR: Dict = {
   "footer.data":
     "Dados dos veículos: fueleconomy.gov (EPA/DOE). Fotos de colaboradores do Wikimedia Commons, creditadas em cada card. Os links \"Ver anúncios\" podem virar links de afiliado.",
   "footer.guides": "Guias de compra",
+  "footer.privacy": "Privacidade",
   "currency.note": "Preços do mercado dos EUA, convertidos para {currency} pelo câmbio de {date}.",
 
   "wiz.question": "Pergunta {n} de {total}",
@@ -266,6 +267,7 @@ export const ptBR: Dict = {
   "auth.title": "Salve os carros que você curtir",
   "auth.sent": "Enviamos um link de confirmação para {email}. Abra-o para concluir o cadastro, e salvaremos o carro que você escolheu.",
   "auth.desc": "Entre ou crie uma conta grátis para guardar até 10 favoritos.",
+  "auth.privacy": "Ao criar uma conta, você concorda com o modo como tratamos seu e-mail e seus favoritos.",
   "auth.signIn": "Entrar",
   "auth.create": "Criar conta",
   "auth.email": "E-mail",
