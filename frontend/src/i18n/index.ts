@@ -80,6 +80,9 @@ export function conversionNote(): string | null {
 }
 
 /** Re-renders the component when the language or exchange rates change. */
+/** For plain functions called during render; components re-render on change through useI18n. */
+export const getLang = () => lang
+
 export function useI18n() {
   useSyncExternalStore(
     (l) => {

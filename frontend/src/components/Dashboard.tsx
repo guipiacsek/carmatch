@@ -10,7 +10,7 @@ import { MAX_FAVORITES, useAccount } from "@/hooks/account"
 import { useCarImage } from "@/hooks/useCarImage"
 import { money, t, useI18n } from "@/i18n"
 import { carName, efficiency, priceRange } from "@/lib/format"
-import { listingsUrl } from "@/lib/listings"
+import { listingSite } from "@/lib/listings"
 import { prefChips } from "@/lib/preferences"
 import { KEYS, save } from "@/lib/storage"
 import type { CarResult, Preferences } from "@/lib/types"
@@ -89,8 +89,8 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
           </ul>
           <div className="flex items-center gap-2 pt-1">
             <Button asChild size="sm" className="rounded-full">
-              <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
-                Cars.com <ExternalLink className="size-3.5" aria-hidden />
+              <a href={listingSite(car).url} target="_blank" rel="noopener noreferrer sponsored">
+                {listingSite(car).name} <ExternalLink className="size-3.5" aria-hidden />
                 <span className="sr-only"> {t("card.listingsFor", { name: carName(car) })}</span>
               </a>
             </Button>
@@ -172,9 +172,9 @@ function Saved({ best }: { best: CarResult }) {
           {t("dash.found")} <b className="block font-extrabold">{t("dash.checkListings")}</b>
         </h3>
         <Button asChild size="sm" className="justify-self-start rounded-full">
-          <a href={listingsUrl(best)} target="_blank" rel="noopener noreferrer sponsored">
+          <a href={listingSite(best).url} target="_blank" rel="noopener noreferrer sponsored">
             {t("dash.seeListings")} <ExternalLink className="size-3.5" aria-hidden />
-            <span className="sr-only"> {t("dash.seeListingsFor", { name: carName(best) })}</span>
+            <span className="sr-only"> {t("dash.seeListingsFor", { name: carName(best), site: listingSite(best).name })}</span>
           </a>
         </Button>
       </section>

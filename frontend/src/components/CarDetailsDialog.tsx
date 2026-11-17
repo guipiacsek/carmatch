@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n, type Key } from "@/i18n"
 import { ApiError, getCarDetails } from "@/lib/api"
 import { carName, efficiency, priceRange, transmission } from "@/lib/format"
-import { listingsUrl } from "@/lib/listings"
+import { listingSite, listingsUrl } from "@/lib/listings"
 import type { CarDetails, CarImage, CarResult } from "@/lib/types"
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -171,11 +171,23 @@ export default function CarDetailsDialog({
           )}
         </div>
 
-        <Button asChild className="h-auto w-full rounded-full py-2.5 whitespace-normal sm:w-fit">
-          <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
-            {t("det.carsCom", { name })} <ExternalLink aria-hidden />
-          </a>
-        </Button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Button asChild className="h-auto w-full rounded-full py-2.5 whitespace-normal sm:w-fit">
+            <a href={listingSite(car).url} target="_blank" rel="noopener noreferrer sponsored">
+              {t("det.carsCom", { name, site: listingSite(car).name })} <ExternalLink aria-hidden />
+            </a>
+          </Button>
+          {lang === "pt-BR" && ( // the AI prices are US prices, so keep the US listings one click away
+            <a
+              href={listingsUrl(car)}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="inline-flex items-center gap-1 text-sm font-semibold underline-offset-2 hover:underline"
+            >
+              {t("det.usListings")} <ExternalLink className="size-3.5" aria-hidden />
+            </a>
+          )}
+        </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useCarImage } from "@/hooks/useCarImage"
 import { t, useI18n, type Key } from "@/i18n"
 import { carName, efficiency, priceRange, transmission } from "@/lib/format"
-import { listingsUrl } from "@/lib/listings"
+import { listingSite } from "@/lib/listings"
 import type { CarResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -152,12 +152,12 @@ function CompareTable({ cars, onRemove }: { cars: CarResult[]; onRemove: (key: s
       label: t("cmp.listings"),
       cell: (c) => (
         <a
-          href={listingsUrl(c)}
+          href={listingSite(c).url}
           target="_blank"
           rel="noopener noreferrer sponsored"
           className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
         >
-          Cars.com <ExternalLink className="size-3.5" aria-hidden />
+          {listingSite(c).name} <ExternalLink className="size-3.5" aria-hidden />
           <span className="sr-only"> {t("card.listingsFor", { name: carName(c) })}</span>
         </a>
       ),

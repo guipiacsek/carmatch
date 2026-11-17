@@ -53,7 +53,7 @@ const POLICY: Record<Lang, Policy> = {
         "Wikimedia Commons and Wikipedia: car photos load directly from their servers, so they see your IP address.",
         "Frankfurter (European Central Bank rates): exchange rates, fetched by our server with no data about you.",
         "Google Fonts: the car buying guide pages load fonts from Google, which sees your IP address.",
-        "Cars.com: only if you click a \"See listings\" link. These links may become affiliate links, which can earn CarMatch a commission at no cost to you.",
+        "Cars.com (or Webmotors in Brazilian Portuguese): only if you click a \"See listings\" link. These links may become affiliate links, which can earn CarMatch a commission at no cost to you.",
       ],
       [
         "Your rights",
@@ -101,7 +101,7 @@ const POLICY: Record<Lang, Policy> = {
         "Wikimedia Commons e Wikipédia: as fotos dos carros carregam direto dos servidores deles, que veem seu endereço IP.",
         "Frankfurter (cotações do Banco Central Europeu): câmbio, buscado pelo nosso servidor sem nenhum dado seu.",
         "Google Fonts: os guias de compra carregam fontes do Google, que vê seu endereço IP.",
-        "Cars.com: só se você clicar em \"Ver anúncios\". Esses links podem virar links de afiliado, que podem render uma comissão ao CarMatch sem custo para você.",
+        "Webmotors e Cars.com: só se você clicar em \"Ver anúncios\". Esses links podem virar links de afiliado, que podem render uma comissão ao CarMatch sem custo para você.",
       ],
       [
         "Seus direitos",
@@ -149,7 +149,7 @@ const POLICY: Record<Lang, Policy> = {
         "Wikimedia Commons y Wikipedia: las fotos de los autos se cargan directo de sus servidores, que ven tu dirección IP.",
         "Frankfurter (tipos del Banco Central Europeo): tipos de cambio, obtenidos por nuestro servidor sin datos tuyos.",
         "Google Fonts: las guías de compra cargan fuentes de Google, que ve tu dirección IP.",
-        "Cars.com: solo si haces clic en \"Ver anuncios\". Estos enlaces pueden volverse enlaces de afiliado, que pueden darle a CarMatch una comisión sin costo para ti.",
+        "Cars.com (o Webmotors en portugués de Brasil): solo si haces clic en \"Ver anuncios\". Estos enlaces pueden volverse enlaces de afiliado, que pueden darle a CarMatch una comisión sin costo para ti.",
       ],
       [
         "Tus derechos",
@@ -197,7 +197,7 @@ const POLICY: Record<Lang, Policy> = {
         "Wikimedia CommonsとWikipedia：車の写真は各サーバーから直接読み込まれるため、IPアドレスが伝わります。",
         "Frankfurter（欧州中央銀行の為替レート）：当社サーバーが取得し、あなたの情報は送りません。",
         "Google Fonts：購入ガイドのページはGoogleからフォントを読み込むため、IPアドレスが伝わります。",
-        "Cars.com：「掲載を見る」リンクをクリックした場合のみ。これらのリンクはアフィリエイトリンクになる場合があり、あなたの負担なしにCarMatchが手数料を受け取ることがあります。",
+        "Cars.com（ブラジルポルトガル語ではWebmotors）：「掲載を見る」リンクをクリックした場合のみ。これらのリンクはアフィリエイトリンクになる場合があり、あなたの負担なしにCarMatchが手数料を受け取ることがあります。",
       ],
       [
         "あなたの権利",

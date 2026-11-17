@@ -8,7 +8,7 @@ import { useAccount } from "@/hooks/account"
 import { t, useI18n, type Key } from "@/i18n"
 import { useCarImage } from "@/hooks/useCarImage"
 import { carName, priceRange } from "@/lib/format"
-import { listingsUrl } from "@/lib/listings"
+import { listingSite } from "@/lib/listings"
 import type { CarImage, CarResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -115,6 +115,7 @@ export function CarCard({
   const image = useCarImage(car)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const color = arcColor(index)
+  const site = listingSite(car)
 
   const chips = [
     { label: t("card.fuel"), value: fuelShort(car.fuel_type) },
@@ -239,8 +240,8 @@ export function CarCard({
             <span />
           )}
           <Button asChild size="sm" className="rounded-full">
-            <a href={listingsUrl(car)} target="_blank" rel="noopener noreferrer sponsored">
-              Cars.com <ExternalLink className="size-3.5" aria-hidden />
+            <a href={site.url} target="_blank" rel="noopener noreferrer sponsored">
+              {site.name} <ExternalLink className="size-3.5" aria-hidden />
               <span className="sr-only"> {t("card.listingsFor", { name })}</span>
             </a>
           </Button>
