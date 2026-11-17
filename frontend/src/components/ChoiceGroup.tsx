@@ -11,7 +11,7 @@ interface Option<T extends string> {
 }
 
 const itemClass =
-  "h-auto min-h-11 justify-start rounded-xl border px-4 py-2.5 text-left whitespace-normal data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+  "h-auto min-h-16 justify-start rounded-xl border px-4 py-3 text-left whitespace-normal data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
 
 function Items<T extends string>({ options }: { options: Option<T>[] }) {
   return options.map((o) => (
@@ -27,7 +27,7 @@ function Items<T extends string>({ options }: { options: Option<T>[] }) {
   ))
 }
 
-const groupClass = "grid w-full grid-cols-2 gap-2 sm:grid-cols-3"
+const groupClass = "grid w-full grid-cols-2 gap-3 sm:grid-cols-3"
 
 export function MultiChoice<T extends string>(props: {
   label: string

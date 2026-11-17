@@ -72,24 +72,26 @@ function Brands({ value, onChange, level }: { value: string[]; onChange: (v: str
 
   return (
     <div className="grid gap-4">
-      <Toggle
-        variant="outline"
-        pressed={value.length === 0}
-        onPressedChange={() => onChange([])}
-        className="h-11 justify-start rounded-xl px-4 data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-      >
-        {t("brands.any")}
-      </Toggle>
-      <div className="relative">
-        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input
-          type="search"
-          placeholder={t("brands.search")}
-          aria-label={t("brands.search")}
-          className="h-11 pl-9"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+        <Toggle
+          variant="outline"
+          pressed={value.length === 0}
+          onPressedChange={() => onChange([])}
+          className="h-11 justify-start rounded-xl px-4 data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+        >
+          {t("brands.any")}
+        </Toggle>
+        <div className="relative">
+          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            type="search"
+            placeholder={t("brands.search")}
+            aria-label={t("brands.search")}
+            className="h-11 pl-9"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
       </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
@@ -99,7 +101,7 @@ function Brands({ value, onChange, level }: { value: string[]; onChange: (v: str
       <div
         role="group"
         aria-label={t("brands.group")}
-        className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto overscroll-contain p-0.5 sm:grid-cols-3"
+        className="grid max-h-52 grid-cols-2 gap-2 overflow-y-auto overscroll-contain p-0.5 sm:grid-cols-3"
       >
         {!makes && !error && Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}
         {shown.map((m, i) => (
@@ -121,11 +123,10 @@ function Brands({ value, onChange, level }: { value: string[]; onChange: (v: str
         ))}
         {makes && shown.length === 0 && <p className="col-span-full text-sm text-muted-foreground">{t("brands.none")}</p>}
       </div>
-      {value.length > 0 && (
-        <p className="text-sm text-muted-foreground" aria-live="polite">
-          {t("brands.selected", { list: value.join(", ") })}
-        </p>
-      )}
+      {/* Always one line tall, so picking a brand never grows the card and moves Back/Next. */}
+      <p className="h-5 truncate text-sm text-muted-foreground" aria-live="polite" title={value.join(", ")}>
+        {value.length > 0 && t("brands.selected", { list: value.join(", ") })}
+      </p>
     </div>
   )
 }
