@@ -28,6 +28,7 @@ import {
   type Preferences,
   type Transmission,
 } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 // Catalog values keep their English API value; only the label is translated.
 const label = (v: string) => t(`v.${v}` as Key)
@@ -346,26 +347,9 @@ export default function Wizard() {
   }
   const pick = <T,>(x: T | ((l: Level) => T)) => (typeof x === "function" ? (x as (l: Level) => T)(level) : x)
   const last = step === STEPS.length - 1
-  const current = STEPS[step]
-  const help = current.help && pick(current.help)
 
   return (
     <div className="mx-auto max-w-2xl">
-      {step === 0 && (
-        <Link
-          to="/rankings"
-          className="relative mb-6 flex items-center gap-3 overflow-hidden rounded-[22px] bg-card p-4 pl-5 transition hover:shadow-[0_12px_30px_#0000001a]"
-        >
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-            <Trophy className="size-5" aria-hidden />
-          </span>
-          <span className="grid">
-            <span className="text-sm font-bold">{t("wiz.browse")}</span>
-            <span className="text-xs font-light text-muted-foreground">{t("wiz.browseSub")}</span>
-          </span>
-          <ArrowRight className="ml-auto size-4 text-muted-foreground" aria-hidden />
-        </Link>
-      )}
       <div className="mb-6 grid gap-2">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>
@@ -377,13 +361,29 @@ export default function Wizard() {
       </div>
 
       <Card>
-        <CardHeader>
-          <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">
-            {t(pick(current.title))}
-          </h1>
-          {help && <p className="text-sm text-muted-foreground">{t(help)}</p>}
-        </CardHeader>
-        <CardContent>{current.render(prefs, set, level, setLevel)}</CardContent>
+        {/* Every question sits in the same grid cell and only the current one shows, so the card always takes
+            the tallest question's height (at any width or language) and Back/Next never move. */}
+        <div className="grid">
+          {STEPS.map((s, i) => {
+            const shown = i === step
+            const h = s.help && pick(s.help)
+            return (
+              <div key={i} inert={!shown} className={cn("col-start-1 row-start-1 grid content-start gap-(--card-spacing)", !shown && "invisible")}>
+                <CardHeader>
+                  <h1
+                    ref={shown ? heading : undefined}
+                    tabIndex={-1}
+                    className="text-2xl font-semibold tracking-tight outline-none"
+                  >
+                    {t(pick(s.title))}
+                  </h1>
+                  {h && <p className="text-sm text-muted-foreground">{t(h)}</p>}
+                </CardHeader>
+                <CardContent>{s.render(prefs, set, level, setLevel)}</CardContent>
+              </div>
+            )
+          })}
+        </div>
         <CardFooter className="justify-between gap-3">
           <Button variant="ghost" size="lg" onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
             <ArrowLeft aria-hidden /> {t("wiz.back")}
@@ -399,6 +399,22 @@ export default function Wizard() {
           )}
         </CardFooter>
       </Card>
+      {/* Below the card so the first question's card starts where every other one does. */}
+      {step === 0 && (
+        <Link
+          to="/rankings"
+          className="relative mt-6 flex items-center gap-3 overflow-hidden rounded-[22px] bg-card p-4 pl-5 transition hover:shadow-[0_12px_30px_#0000001a]"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Trophy className="size-5" aria-hidden />
+          </span>
+          <span className="grid">
+            <span className="text-sm font-bold">{t("wiz.browse")}</span>
+            <span className="text-xs font-light text-muted-foreground">{t("wiz.browseSub")}</span>
+          </span>
+          <ArrowRight className="ml-auto size-4 text-muted-foreground" aria-hidden />
+        </Link>
+      )}
     </div>
   )
 }
