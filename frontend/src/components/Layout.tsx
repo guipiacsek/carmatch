@@ -146,6 +146,8 @@ export function Layout() {
     setDarkState(!dark)
   }
   const wrap = "mx-auto w-full max-w-[1400px] px-4 md:px-8"
+  // The wizard fills the screen under the header (4rem) and sits in its middle; the footer starts below the fold.
+  const centered = useLocation().pathname === "/"
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50">
@@ -178,7 +180,7 @@ export function Layout() {
         </div>
       </header>
 
-      <main id="main" className={cn(wrap, "flex-1 pt-6 pb-10 md:pt-8")}>
+      <main id="main" className={cn(wrap, "flex-1 pt-6 pb-10 md:pt-8", centered && "flex min-h-[calc(100svh-4rem)] flex-col justify-center")}>
         <Outlet />
       </main>
       <footer className={cn(wrap, "space-y-1 pb-24 text-[11px] text-muted-foreground")}>

@@ -349,8 +349,8 @@ export default function Wizard() {
   const last = step === STEPS.length - 1
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-6 grid gap-2">
+    <div className="mx-auto w-full max-w-2xl">
+      <div className="mb-8 grid gap-3">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>
             {t("wiz.question", { n: step + 1, total: STEPS.length })}
@@ -360,7 +360,7 @@ export default function Wizard() {
         <Progress value={((step + 1) / STEPS.length) * 100} aria-label={t("wiz.progress")} />
       </div>
 
-      <Card>
+      <Card className="[--card-spacing:--spacing(6)]">
         {/* Every question sits in the same grid cell and only the current one shows, so the card always takes
             the tallest question's height (at any width or language) and Back/Next never move. */}
         <div className="grid">
@@ -369,7 +369,7 @@ export default function Wizard() {
             const h = s.help && pick(s.help)
             return (
               <div key={i} inert={!shown} className={cn("col-start-1 row-start-1 grid content-start gap-(--card-spacing)", !shown && "invisible")}>
-                <CardHeader>
+                <CardHeader className="gap-2">
                   <h1
                     ref={shown ? heading : undefined}
                     tabIndex={-1}
@@ -399,22 +399,24 @@ export default function Wizard() {
           )}
         </CardFooter>
       </Card>
-      {/* Below the card so the first question's card starts where every other one does. */}
-      {step === 0 && (
-        <Link
-          to="/rankings"
-          className="relative mt-6 flex items-center gap-3 overflow-hidden rounded-[22px] bg-card p-4 pl-5 transition hover:shadow-[0_12px_30px_#0000001a]"
-        >
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-            <Trophy className="size-5" aria-hidden />
-          </span>
-          <span className="grid">
-            <span className="text-sm font-bold">{t("wiz.browse")}</span>
-            <span className="text-xs font-light text-muted-foreground">{t("wiz.browseSub")}</span>
-          </span>
-          <ArrowRight className="ml-auto size-4 text-muted-foreground" aria-hidden />
-        </Link>
-      )}
+      {/* Only on the first question, but its space is kept on every question so the centered card never shifts. */}
+      <Link
+        to="/rankings"
+        inert={step !== 0}
+        className={cn(
+          "relative mt-8 flex items-center gap-3 overflow-hidden rounded-[22px] bg-card p-4 pl-5 transition hover:shadow-[0_12px_30px_#0000001a]",
+          step !== 0 && "invisible",
+        )}
+      >
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+          <Trophy className="size-5" aria-hidden />
+        </span>
+        <span className="grid">
+          <span className="text-sm font-bold">{t("wiz.browse")}</span>
+          <span className="text-xs font-light text-muted-foreground">{t("wiz.browseSub")}</span>
+        </span>
+        <ArrowRight className="ml-auto size-4 text-muted-foreground" aria-hidden />
+      </Link>
     </div>
   )
 }
