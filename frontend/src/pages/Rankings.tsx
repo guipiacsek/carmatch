@@ -59,7 +59,7 @@ export default function Rankings() {
               <li key={l.slug}>
                 <Link
                   to={`/rankings/${l.slug}`}
-                  className="flex h-full flex-col overflow-hidden rounded-[26px] bg-card transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_40px_#0000001a]"
+                  className="flex h-full flex-col overflow-hidden rounded-[26px] bg-card transition duration-300 motion-safe:hover:-translate-y-1 hover:shadow-[0_22px_40px_#0000001a]"
                   style={{ "--c": arcColor(i) } as React.CSSProperties}
                 >
                   <div className="relative h-36 shrink-0 overflow-hidden">
@@ -70,7 +70,7 @@ export default function Rankings() {
                         src={top.image.url}
                         alt=""
                         loading="lazy"
-                        className="absolute top-8 -right-6 h-24 w-44 rounded-[14px] object-cover shadow-[0_14px_24px_#0003]"
+                        className="absolute top-8 -right-6 h-24 w-44 rounded-[14px] object-cover shadow-[0_14px_24px_#0003] outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
                       />
                     ) : (
                       <CarFront className="absolute top-10 right-8 size-14 text-muted-foreground" aria-hidden />

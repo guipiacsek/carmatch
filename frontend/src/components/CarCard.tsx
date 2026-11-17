@@ -38,7 +38,7 @@ export function CarPhoto({ car, image }: { car: CarResult; image: CarImage | nul
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
-        className="aspect-[16/10] w-full bg-muted object-cover"
+        className="aspect-[16/10] w-full bg-muted object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
       />
       <figcaption className="truncate px-4 pt-1.5 text-[11px] text-muted-foreground">
         {t("card.photo")}{" "}
@@ -89,7 +89,7 @@ function ArcPhoto({ car, image }: { car: CarResult; image: CarImage | null | und
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}
-      className={cn(box, "bg-white/30 object-cover")}
+      className={cn(box, "bg-white/30 object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10")}
     />
   )
 }
@@ -125,7 +125,7 @@ export function CarCard({
 
   return (
     <article
-      className="group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[26px] bg-card text-card-foreground shadow-[0_2px_0_#0000000a] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_22px_40px_#0000001f]"
+      className="group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[26px] bg-card text-card-foreground shadow-[0_2px_0_#0000000a] transition duration-300 motion-safe:hover:-translate-y-1.5 hover:shadow-[0_22px_40px_#0000001f]"
       style={{ "--c": color } as React.CSSProperties}
       onClick={(e) => {
         // The whole card opens details, except its own controls (heart, compare, links). Clicks inside the

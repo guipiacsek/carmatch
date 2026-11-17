@@ -22,7 +22,13 @@ export function setDark(dark: boolean): void {
   } catch {
     /* storage unavailable: the choice lasts for this page only */
   }
+  // Without this, every color transition fires at once and the switch smears; back on once the swap is painted.
+  const off = document.createElement("style")
+  off.textContent = "*,*::before,*::after{transition:none!important}"
+  document.head.appendChild(off)
   document.documentElement.classList.toggle("dark", dark)
+  void getComputedStyle(document.body).opacity // force the style flush while transitions are off
+  setTimeout(() => off.remove(), 1)
 }
 
 /** Calls `cb` when the OS theme changes (it matters only while the visitor hasn't picked one). Returns unsubscribe. */

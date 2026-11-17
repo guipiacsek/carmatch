@@ -75,7 +75,7 @@ export default function CarDetailsDialog({
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="max-h-[92svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-y-auto rounded-[28px] p-0 sm:max-w-3xl [&>button:last-child]:text-white"
+        className="max-h-[92svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-y-auto overscroll-contain rounded-[28px] p-0 sm:max-w-3xl [&>button:last-child]:text-white"
         style={{ "--c": color } as React.CSSProperties}
       >
         <div className="grid items-center gap-5 bg-[var(--c)] p-6 text-white sm:grid-cols-2 sm:p-7">

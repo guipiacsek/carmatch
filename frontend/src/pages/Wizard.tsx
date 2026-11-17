@@ -98,7 +98,7 @@ function Brands({ value, onChange, level }: { value: string[]; onChange: (v: str
       <div
         role="group"
         aria-label={t("brands.group")}
-        className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto p-0.5 sm:grid-cols-3"
+        className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto overscroll-contain p-0.5 sm:grid-cols-3"
       >
         {!makes && !error && Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}
         {shown.map((m, i) => (

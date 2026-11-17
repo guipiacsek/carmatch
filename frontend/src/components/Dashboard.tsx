@@ -41,7 +41,7 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
 
   return (
     <article
-      className="relative grid cursor-pointer overflow-hidden rounded-[26px] bg-card transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_40px_#0000001a] sm:min-h-[360px] sm:grid-cols-2 lg:col-span-8"
+      className="relative grid cursor-pointer overflow-hidden rounded-[26px] bg-card transition duration-300 motion-safe:hover:-translate-y-1 hover:shadow-[0_22px_40px_#0000001a] sm:min-h-[360px] sm:grid-cols-2 lg:col-span-8"
       style={{ "--c": color } as React.CSSProperties}
       onClick={(e) => {
         const target = e.target as HTMLElement // same guard as CarCard: skip own controls and portal clicks
@@ -67,7 +67,7 @@ function Hero({ car, onOpen }: { car: CarResult; onOpen: Open }) {
       </div>
       <div className="relative grid min-w-0 content-between gap-[18px] pb-6 sm:pt-9">
         {image && !failed ? (
-          <img src={image.url} alt={carName(car)} decoding="async" onError={() => setFailed(true)} className={cn(photo, "bg-white/30 object-cover")} />
+          <img src={image.url} alt={carName(car)} decoding="async" onError={() => setFailed(true)} className={cn(photo, "bg-white/30 object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10")} />
         ) : (
           <div className={cn(photo, "grid place-items-center bg-muted text-muted-foreground")} role="img" aria-label={t("card.noPhoto", { name: carName(car) })}>
             <CarFront className="size-12" aria-hidden />
@@ -145,7 +145,7 @@ function Pick({ title, note, car, index, onOpen }: { title: string; note: string
       <button type="button" className="flex items-center gap-3.5 text-left" onClick={() => onOpen(car, arcColor(index))} aria-haspopup="dialog">
         <span className="h-16 w-24 shrink-0 overflow-hidden rounded-[14px] pt-1.5 pl-3.5" style={{ background: arcColor(index) }}>
           {image ? (
-            <img src={image.url} alt="" loading="lazy" className="h-[58px] w-[100px] rounded-[10px] object-cover" />
+            <img src={image.url} alt="" loading="lazy" className="h-[58px] w-[100px] rounded-[10px] object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10" />
           ) : (
             <CarFront className="mt-2 ml-2 size-8 text-white" aria-hidden />
           )}

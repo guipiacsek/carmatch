@@ -92,7 +92,7 @@ export function ResultList({
       )}
 
       <Dialog open={open && chosen.length > 1} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-5xl">
+        <DialogContent className="max-h-[90svh] overflow-y-auto overscroll-contain sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>{t("cmp.title")}</DialogTitle>
             <DialogDescription>{t("cmp.desc")}</DialogDescription>
